@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>title</key>
+	<string>Manage packs</string>
+	<key>items</key>
+	<array>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>IMPORT</string>
+			<key>footerText</key>
+			<string>Import a pack folder, ZIP or .nextclock archive. Packs contain digits 0–9 and colon in static/ or animated/. PNG, GIF and APNG are supported.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Import pack…</string>
+			<key>action</key>
+			<string>importPack</string>
+		</dict>
+	</array>
+</dict>
+</plist>

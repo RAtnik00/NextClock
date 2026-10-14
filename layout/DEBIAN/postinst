@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+mkdir -p /var/mobile/Library/NextClock/Packs
+
+chown mobile:mobile /var/mobile/Library/NextClock
+chown mobile:mobile /var/mobile/Library/NextClock/Packs
+
+chmod 755 /var/mobile/Library/NextClock
+chmod 755 /var/mobile/Library/NextClock/Packs
+
+exit 0
