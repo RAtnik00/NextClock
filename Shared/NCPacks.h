@@ -39,12 +39,21 @@ static inline BOOL NCImageValid(NSString *path, BOOL deep) {
     NSUInteger h = [props[(__bridge NSString *)kCGImagePropertyPixelHeight] unsignedIntegerValue];
     BOOL ok = n > 0 && n <= 240 && w > 0 && h > 0 && w <= 2048 && h <= 2048 &&
         (uint64_t)w * h * 4 * n <= 96 * 1024 * 1024;
-    if (ok && deep) {
+    if (ok) {
+        uint64_t total = 0;
         for (size_t i = 0; i < n; i++) {
             @autoreleasepool {
-                CGImageRef frame = CGImageSourceCreateImageAtIndex(src, i, NULL);
-                if (!frame) { ok = NO; break; }
-                CGImageRelease(frame);
+                NSDictionary *frameProps = CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(src, i, NULL));
+                NSUInteger fw = [frameProps[(__bridge NSString *)kCGImagePropertyPixelWidth] unsignedIntegerValue];
+                NSUInteger fh = [frameProps[(__bridge NSString *)kCGImagePropertyPixelHeight] unsignedIntegerValue];
+                if (!fw || !fh || fw > 2048 || fh > 2048) { ok = NO; break; }
+                total += (uint64_t)fw * fh * 4;
+                if (total > 96 * 1024 * 1024) { ok = NO; break; }
+                if (deep) {
+                    CGImageRef frame = CGImageSourceCreateImageAtIndex(src, i, NULL);
+                    if (!frame) { ok = NO; break; }
+                    CGImageRelease(frame);
+                }
             }
         }
     }

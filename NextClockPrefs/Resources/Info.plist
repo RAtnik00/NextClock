@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
-	<string>English</string>
+	<string>en</string>
 	<key>CFBundleExecutable</key>
 	<string>NextClockPrefs</string>
 	<key>CFBundleIdentifier</key>
@@ -13,12 +13,18 @@
 	<key>CFBundlePackageType</key>
 	<string>BNDL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>1.0</string>
+	<string>1.0.1</string>
 	<key>NSPrincipalClass</key>
 	<string>NCRootListControllerRootListController</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ru</string>
+		<string>uk</string>
+	</array>
 </dict>
 </plist>

@@ -4,6 +4,11 @@
 #import "NCRootListControllerRootListController.h"
 #import "../Shared/NCPacks.h"
 #import "../Shared/NCZip.h"
+#import "NCLocalization.h"
+
+static NSString *NCText(NSString *key) {
+    return NCLocalizedString([NSBundle bundleForClass:NCRootListControllerRootListController.class], key);
+}
 
 @interface PSSpecifier (NextClockLists)
 - (void)setValues:(NSArray *)values titles:(NSArray *)titles shortTitles:(NSArray *)shortTitles;
@@ -16,6 +21,32 @@
 @end
 
 @implementation NCRootListControllerRootListController
+// Localize plist labels, footers and list choices; stored preference values stay unchanged.
+- (NSMutableArray *)nc_loadSpecifiers:(NSString *)name {
+    NSMutableArray *items = [[self loadSpecifiersFromPlistName:name target:self] mutableCopy];
+    NSBundle *bundle = [NSBundle bundleForClass:self.class];
+    NSDictionary *source = [NSDictionary dictionaryWithContentsOfFile:
+        [bundle pathForResource:name ofType:@"plist"]];
+    self.title = NCText(source[@"title"] ?: @"NextClock");
+    for (PSSpecifier *row in items) {
+        if (row.name.length) row.name = NCText(row.name);
+        NSString *footer = [row propertyForKey:@"footerText"];
+        if (footer.length) [row setProperty:NCText(footer) forKey:@"footerText"];
+        NSString *key = [row propertyForKey:@"key"];
+        for (NSDictionary *entry in source[@"items"]) {
+            if (!key || ![key isEqual:entry[@"key"]]) continue;
+            NSArray *titles = entry[@"validTitles"], *values = entry[@"validValues"];
+            if (titles.count && titles.count == values.count && ![key isEqual:@"pack"]) {
+                NSMutableArray *translated = [NSMutableArray array];
+                for (NSString *title in titles) [translated addObject:NCText(title)];
+                [row setValues:values titles:translated shortTitles:translated];
+            }
+            break;
+        }
+    }
+    return items;
+}
+
 - (PSSpecifier *)button:(NSString *)title action:(SEL)action {
     PSSpecifier *row=[PSSpecifier preferenceSpecifierNamed:title target:self set:NULL get:NULL detail:Nil cell:PSButtonCell edit:Nil];
     row.buttonAction=action; return row;
@@ -31,37 +62,37 @@
     if (_specifiers) return _specifiers;
     NSString *page=[self.specifier propertyForKey:@"nextClockPage"];
     if ([page isEqual:@"About"]) {
-        _specifiers=[self loadSpecifiersFromPlistName:@"About" target:self]; return _specifiers;
+        _specifiers=[self nc_loadSpecifiers:@"About"]; return _specifiers;
     }
     if ([page isEqual:@"PackDetails"]) {
-        NSDictionary *pack=[self currentPack]; NSMutableArray *items=[NSMutableArray array];
-        [items addObject:[PSSpecifier groupSpecifierWithName:pack[@"Name"] ?: @"Pack"]];
-        [items addObject:[self text:[@"Version: " stringByAppendingString:pack[@"Version"] ?: @"1.0"]]];
-        if ([pack[@"Author"] length]) [items addObject:[self text:[@"Author: " stringByAppendingString:pack[@"Author"]]]];
-        [items addObject:[self text:[pack[@"user"] boolValue] ? @"User pack" : @"Bundled pack"]];
-        [items addObject:[self button:@"Use this pack" action:@selector(useThisPack)]];
+        NSDictionary *pack=[self currentPack]; self.title=pack[@"Name"] ?: NCText(@"Pack"); NSMutableArray *items=[NSMutableArray array];
+        [items addObject:[PSSpecifier groupSpecifierWithName:pack[@"Name"] ?: NCText(@"Pack")]];
+        [items addObject:[self text:[NSString stringWithFormat:NCText(@"Version: %@"), pack[@"Version"] ?: @"1.0"]]];
+        if ([pack[@"Author"] length]) [items addObject:[self text:[NSString stringWithFormat:NCText(@"Author: %@"), pack[@"Author"]]]];
+        [items addObject:[self text:[pack[@"user"] boolValue] ? NCText(@"User pack") : NCText(@"Bundled pack")]];
+        [items addObject:[self button:NCText(@"Use this pack") action:@selector(useThisPack)]];
         PSSpecifier *group=[PSSpecifier groupSpecifierWithName:@""];
         [items addObject:group];
         if ([pack[@"user"] boolValue]) {
-            PSSpecifier *remove=[self button:@"Delete pack" action:@selector(deleteThisPack)];
+            PSSpecifier *remove=[self button:NCText(@"Delete pack") action:@selector(deleteThisPack)];
             [remove setProperty:@YES forKey:@"isDestructive"]; [items addObject:remove];
-        } else [group setProperty:@"Bundled packs are part of NextClock and cannot be deleted here." forKey:@"footerText"];
+        } else [group setProperty:NCText(@"Bundled packs are part of NextClock and cannot be deleted here.") forKey:@"footerText"];
         _specifiers=items; return _specifiers;
     }
     NSArray *packs=NCAllPacks();
     if ([page isEqual:@"ManagePacks"]) {
         NSMutableArray *items=[NSMutableArray array];
-        [items addObject:[PSSpecifier groupSpecifierWithName:@"INSTALLED"]];
+        [items addObject:[PSSpecifier groupSpecifierWithName:NCText(@"INSTALLED")]];
         for (NSDictionary *pack in packs) {
             PSSpecifier *row=[PSSpecifier preferenceSpecifierNamed:pack[@"Name"] target:self set:NULL get:NULL
                 detail:self.class cell:PSLinkCell edit:Nil];
             [row setProperty:@"PackDetails" forKey:@"nextClockPage"]; [row setProperty:pack forKey:@"ncPack"];
             [items addObject:row];
         }
-        NSArray *imports=[self loadSpecifiersFromPlistName:@"ManagePacks" target:self];
+        NSArray *imports=[self nc_loadSpecifiers:@"ManagePacks"];
         if (imports) [items addObjectsFromArray:imports]; _specifiers=items; return _specifiers;
     }
-    _specifiers=[self loadSpecifiersFromPlistName:@"Root" target:self];
+    _specifiers=[self nc_loadSpecifiers:@"Root"];
     NSMutableArray *values=[NSMutableArray array], *titles=[NSMutableArray array];
     for (NSDictionary *pack in packs) { [values addObject:pack[@"id"]]; [titles addObject:pack[@"Name"]]; }
     for (PSSpecifier *row in _specifiers) if ([[row propertyForKey:@"key"] isEqual:@"pack"]) {
@@ -71,7 +102,8 @@
 }
 - (void)refreshNextClockSettings { _specifiers=nil; [self reloadSpecifiers]; }
 - (void)refreshAllPages {
-    for (UIViewController *page in self.navigationController.viewControllers)
+    NSArray *pages = [self.navigationController.viewControllers copy];
+    for (UIViewController *page in pages)
         if ([page isKindOfClass:self.class]) [(NCRootListControllerRootListController *)page refreshNextClockSettings];
 }
 - (void)setPack:(NSString *)identifier {
@@ -86,8 +118,8 @@
     [self setPack:identifier]; [self refreshAllPages]; [self.navigationController popViewControllerAnimated:YES];
 }
 - (void)showMessage:(NSString *)message title:(NSString *)title {
-    UIAlertController *alert=[UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+    UIAlertController *alert=[UIAlertController alertControllerWithTitle:NCText(title) message:NCText(message) preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:NCText(@"OK") style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
 }
 - (void)deleteThisPack {
@@ -95,12 +127,12 @@
     if (![pack[@"user"] boolValue] || !NCValidIdentifier(identifier)) return;
     NSString *path=[NCUserRoot() stringByAppendingPathComponent:identifier];
     if (![path isEqual:pack[@"path"]]) return;
-    UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Delete pack?"
-        message:[NSString stringWithFormat:@"Delete “%@”? You can import it again later.",pack[@"Name"]] preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Delete" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+    UIAlertController *alert=[UIAlertController alertControllerWithTitle:NCText(@"Delete pack?")
+        message:[NSString stringWithFormat:NCText(@"Delete “%@”? You can import it again later."),pack[@"Name"]] preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:NCText(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:NCText(@"Delete") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
         NSError *error=nil;
-        if (![NSFileManager.defaultManager removeItemAtPath:path error:&error]) { [self showMessage:error.localizedDescription title:@"Delete failed"]; return; }
+        if (![NSFileManager.defaultManager removeItemAtPath:path error:&error]) { [self showMessage:error.localizedDescription title:NCText(@"Delete failed")]; return; }
         CFPreferencesAppSynchronize(CFSTR("com.ratnik00.nextclock"));
         id selected=CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("pack"),CFSTR("com.ratnik00.nextclock")));
         [self setPack:[selected isKindOfClass:NSString.class] && ![selected isEqual:identifier] ? selected : @"Anime"];
@@ -118,8 +150,9 @@
 - (NSString *)installPackFromFolder:(NSURL *)url error:(NSError **)error {
     NSFileManager *manager=NSFileManager.defaultManager;
     NSString *source=NCResolvePickedFolder(url.path);
-    if (!source) { if (error) *error=NCError(@"Choose a pack containing all digits 0–9 and colon in static/ or animated/. PNG, GIF and APNG are supported."); return nil; }
+    if (!source) { if (error) *error=NCError(NCText(@"Choose a pack containing all digits 0–9 and colon in static/ or animated/. PNG, GIF and APNG are supported.")); return nil; }
     NSDictionary *info=NCPackInfo(source,source.lastPathComponent,YES,YES);
+    if (!info) { if (error) *error=NCError(NCText(@"Copied pack failed validation.")); return nil; }
     NSString *identifier=[@"Imported-" stringByAppendingString:NSUUID.UUID.UUIDString];
     NSString *root=NCUserRoot();
     if (![manager createDirectoryAtPath:root withIntermediateDirectories:YES attributes:nil error:error]) return nil;
@@ -140,7 +173,7 @@
         NSData *data=[NSPropertyListSerialization dataWithPropertyList:meta format:NSPropertyListXMLFormat_v1_0 options:0 error:error];
         copied=data && [data writeToFile:[stage stringByAppendingPathComponent:@"Info.plist"] options:NSDataWritingAtomic error:error];
     }
-    if (copied && !NCPackInfo(stage,identifier,YES,YES)) { copied=NO; if (error) *error=NCError(@"Copied pack failed validation."); }
+    if (copied && !NCPackInfo(stage,identifier,YES,YES)) { copied=NO; if (error) *error=NCError(NCText(@"Copied pack failed validation.")); }
     if (copied) copied=[manager moveItemAtPath:stage toPath:[root stringByAppendingPathComponent:identifier] error:error];
     if (!copied) [manager removeItemAtPath:stage error:nil];
     return copied ? identifier : nil;
@@ -167,25 +200,36 @@
         dispatch_async(dispatch_get_main_queue(), ^{
             self.importing=NO;
             if (identifier) [self setPack:identifier];
-            NSString *message=identifier ? @"Pack imported and selected." : (failure ?: coordinationError).localizedDescription ?: @"Import failed.";
+            NSString *message=identifier ? NCText(@"Pack imported and selected.") : (failure ?: coordinationError).localizedDescription ?: NCText(@"Import failed.");
             void (^finish)(void)=^{ if (identifier) [self refreshAllPages]; [self showMessage:message title:@"NextClock"]; };
             if (controller.presentingViewController) [controller dismissViewControllerAnimated:YES completion:finish]; else finish();
         });
     });
 }
 - (void)resetSettings {
-    UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"Reset settings?"
-        message:@"All clock settings will return to defaults. Installed packs will be kept." preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:nil]];
-    [alert addAction:[UIAlertAction actionWithTitle:@"Reset" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+    UIAlertController *alert=[UIAlertController alertControllerWithTitle:NCText(@"Reset settings?")
+        message:NCText(@"All clock settings will return to defaults. Installed packs will be kept.") preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:NCText(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:NCText(@"Reset") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
         CFStringRef domain=CFSTR("com.ratnik00.nextclock");
-        for (NSString *key in @[@"enabled",@"pack",@"animationStyle",@"animationSpeed",@"staticInLowPower",@"clockScale",@"digitSpacing",@"verticalOffset",@"timeFormat",@"hideDate",@"colorFilterEnabled",@"tintColor"])
+        for (NSString *key in @[@"enabled",@"pack",@"animationStyle",@"animationSpeed",@"staticInLowPower",@"clockScale",@"digitSpacing",@"verticalOffset",@"timeFormat",@"hideDate", @"showSeconds",@"colorFilterEnabled",@"tintColor"])
             CFPreferencesSetAppValue((__bridge CFStringRef)key,NULL,domain);
         CFPreferencesAppSynchronize(domain);
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.ratnik00.nextclock/preferenceschanged"),NULL,NULL,YES);
         [self refreshAllPages];
     }]];
     [self presentViewController:alert animated:YES completion:nil];
+}
+- (void)supportDeveloper {
+    NSURL *url = [NSURL URLWithString:@"https://buycoffee.to/ratnik00"];
+    [UIApplication.sharedApplication openURL:url options:@{} completionHandler:^(BOOL success) {
+        if (!success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self showMessage:NCText(@"Unable to open the support page. Please try again later.")
+                            title:@"NextClock"];
+            });
+        }
+    }];
 }
 - (void)restartSpringBoard {
     CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.ratnik00.nextclock/respring"),NULL,NULL,YES);

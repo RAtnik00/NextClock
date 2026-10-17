@@ -24,7 +24,7 @@
 			<key>cell</key>
 			<string>PSStaticTextCell</string>
 			<key>label</key>
-			<string>Version: 0.1.0 — Development</string>
+			<string>Version: 1.0.1</string>
 		</dict>
 	</array>
 </dict>

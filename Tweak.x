@@ -7,9 +7,14 @@
 #import <stdlib.h>
 #import <math.h>
 #import "Shared/NCPacks.h"
+#import <notify.h>
 
 // iOS 15 implementation. All rendering and settings changes run on the main thread.
 static BOOL NCEnabled = YES, NCHideDate = NO, NCAnimated = YES, NCStillLowPower = NO, NCTint = NO;
+static BOOL NCShowSeconds = NO;
+static NSTimer *NCSecondsTimer;
+static BOOL NCScreenOn = NO;
+static int NCDisplayToken = -1;
 static CGFloat NCScale = 1, NCSpacing = -2, NCOffset = 0, NCSpeed = 1;
 static NSString *NCPack = @"Anime", *NCFormat = @"system", *NCColorHex = @"#FF9500";
 static NSHashTable<UIView *> *NCViews;
@@ -19,7 +24,7 @@ static NSString *NCResolvedFolder;
 static BOOL NCResolvedWanted;
 static BOOL NCStarted = NO;
 static CFTimeInterval NCEpoch = 0;
-static char NCStateKey, NCGlyphKey;
+static char NCStateKey, NCGlyphKey, NCContentAlphaKey, NCDateAlphaKey;
 
 @interface NCGlyph : NSObject
 @property(nonatomic, copy) NSArray<UIImage *> *frames;
@@ -34,6 +39,7 @@ static char NCStateKey, NCGlyphKey;
 @property(nonatomic, strong) UIView *overlay;
 @property(nonatomic, strong) NSMutableArray<UIImageView *> *views;
 @property(nonatomic, copy) NSString *signature;
+@property(nonatomic) BOOL animated;
 @end
 @implementation NCClockState
 @end
@@ -55,6 +61,7 @@ static NSString *NCString(NSString *key, NSString *fallback) {
 static void NCLoadSettings(void) {
     CFPreferencesAppSynchronize(CFSTR("com.ratnik00.nextclock"));
     NCEnabled = NCBool(@"enabled", YES); NCHideDate = NCBool(@"hideDate", NO);
+    NCShowSeconds = NCBool(@"showSeconds", NO);
     NCAnimated = ![NCString(@"animationStyle", @"animated") isEqual:@"static"];
     NCStillLowPower = NCBool(@"staticInLowPower", NO); NCTint = NCBool(@"colorFilterEnabled", NO);
     NCScale = NCFloat(@"clockScale", 1, .3, 2.5);
@@ -92,9 +99,11 @@ static UIImage *NCTintedFrame(UIImage *image) {
     UIImage *result = UIGraphicsGetImageFromCurrentImageContext(); UIGraphicsEndImageContext();
     return result ?: image;
 }
-static NCGlyph *NCDecode(NSString *path, BOOL animate) {
+static NCGlyph *NCDecode(NSString *path, BOOL animate, NSUInteger budget) {
     NSString *key = [NSString stringWithFormat:@"%@|%d|%d|%@", path, animate, NCTint, NCColorHex];
-    NCGlyph *cached = [NCImages objectForKey:key]; if (cached) return cached;
+    NCGlyph *cached = [NCImages objectForKey:key];
+    if (cached) return cached.cost <= budget ? cached : nil;
+    if (!NCImageValid(path, NO)) return nil;
     CGImageSourceRef source = CGImageSourceCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path], NULL);
     if (!source) return nil;
     size_t count = CGImageSourceGetCount(source);
@@ -107,7 +116,7 @@ static NCGlyph *NCDecode(NSString *path, BOOL animate) {
             CGImageRef frame = CGImageSourceCreateImageAtIndex(source, index, NULL);
             if (!frame) { CFRelease(source); return nil; }
             NSUInteger bytes = CGImageGetBytesPerRow(frame) * CGImageGetHeight(frame);
-            if (bytes > 96 * 1024 * 1024 || cost > 96 * 1024 * 1024 - bytes) {
+            if (bytes > budget || cost > budget - bytes) {
                 CGImageRelease(frame); CFRelease(source); return nil;
             }
             cost += bytes;
@@ -122,7 +131,9 @@ static NCGlyph *NCDecode(NSString *path, BOOL animate) {
                 png[(__bridge NSString *)kCGImagePropertyAPNGDelayTime];
             double seconds = delay.doubleValue;
             if (!isfinite(seconds) || seconds <= 0) seconds = .1;
-            seconds = MAX(.01, seconds); [durations addObject:@(seconds)]; total += seconds;
+            seconds = MAX(.01, seconds);
+            if (!isfinite(total + seconds)) { CFRelease(source); return nil; }
+            [durations addObject:@(seconds)]; total += seconds;
         }
     }
     CFRelease(source);
@@ -180,15 +191,84 @@ static NSString *NCTime(NSDate *date) {
         NSString *pattern = [NSDateFormatter dateFormatFromTemplate:@"j" options:0 locale:NSLocale.currentLocale];
         use24 = [pattern containsString:@"H"] || [pattern containsString:@"k"];
     }
-    formatter.dateFormat = use24 ? @"HH:mm" : @"h:mm";
+    formatter.dateFormat = NCShowSeconds
+        ? (use24 ? @"HH:mm:ss" : @"h:mm:ss")
+        : (use24 ? @"HH:mm" : @"h:mm");
     formatter.timeZone = NSTimeZone.localTimeZone; return [formatter stringFromDate:date];
 }
 static void NCRefreshViews(void) {
-    for (UIView *view in NCViews.allObjects) [view setNeedsLayout];
+    for (UIView *view in NCViews.allObjects) {
+        [view setNeedsLayout];
+    }
+}
+
+static BOOL NCHasVisibleClock(void) {
+    for (UIView *view in NCViews.allObjects) {
+        if (!view.window) continue;
+
+        BOOL visible = YES;
+
+        for (UIView *parent = view; parent; parent = parent.superview) {
+            if (parent.hidden || parent.alpha <= 0.01) {
+                visible = NO;
+                break;
+            }
+        }
+
+        if (visible) return YES;
+    }
+
+    return NO;
+}
+
+static void NCUpdateSecondsTimer(void) {
+    BOOL shouldRun =
+        NCEnabled &&
+        NCShowSeconds &&
+        NCScreenOn &&
+        NCHasVisibleClock();
+
+    if (!shouldRun) {
+        [NCSecondsTimer invalidate];
+        NCSecondsTimer = nil;
+        return;
+    }
+
+    if (NCSecondsTimer) return;
+
+    NSTimeInterval now = NSDate.date.timeIntervalSince1970;
+    NSDate *nextSecond =
+        [NSDate dateWithTimeIntervalSince1970:floor(now) + 1.0];
+
+    NCSecondsTimer = [[NSTimer alloc]
+        initWithFireDate:nextSecond
+        interval:1.0
+        repeats:YES
+        block:^(NSTimer *timer) {
+            if (!NCEnabled || !NCShowSeconds ||
+                !NCScreenOn || !NCHasVisibleClock()) {
+                [timer invalidate];
+                NCSecondsTimer = nil;
+                return;
+            }
+
+            NCRefreshViews();
+        }];
+
+    NCSecondsTimer.tolerance = 0.02;
+
+    [NSRunLoop.mainRunLoop
+        addTimer:NCSecondsTimer
+        forMode:NSRunLoopCommonModes];
 }
 static void NCPreferencesChanged(CFNotificationCenterRef c, void *o, CFStringRef n, const void *object, CFDictionaryRef info) {
-    dispatch_async(dispatch_get_main_queue(), ^{ NCLoadSettings(); NCRefreshViews(); });
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NCLoadSettings();
+        NCUpdateSecondsTimer();
+        NCRefreshViews();
+    });
 }
+
 static void NCRespring(CFNotificationCenterRef c, void *o, CFStringRef n, const void *object, CFDictionaryRef info) {
     dispatch_async(dispatch_get_main_queue(), ^{ exit(0); });
 }
@@ -196,6 +276,38 @@ static void NCStart(void) {
     if (NCStarted) return; NCStarted = YES;
     NCViews = [NSHashTable weakObjectsHashTable]; NCImages = [NSCache new]; NCImages.totalCostLimit = 36 * 1024 * 1024;
     NCLoadSettings();
+    uint32_t result = notify_register_dispatch(
+        "com.apple.iokit.hid.displayStatus",
+        &NCDisplayToken,
+        dispatch_get_main_queue(),
+        ^(int token) {
+            uint64_t state = 0;
+
+            if (notify_get_state(token, &state) == NOTIFY_STATUS_OK) {
+                NCScreenOn = state != 0;
+            } else {
+                NCScreenOn = NO;
+            }
+
+            NCUpdateSecondsTimer();
+
+            if (NCScreenOn) {
+                NCRefreshViews();
+            }
+        }
+    );
+
+    if (result == NOTIFY_STATUS_OK) {
+        uint64_t state = 0;
+
+        if (notify_get_state(NCDisplayToken, &state) ==
+            NOTIFY_STATUS_OK) {
+            NCScreenOn = state != 0;
+        }
+    } else {
+        NSLog(@"[NextClock] Cannot observe display state: %u",
+              (unsigned int)result);
+    }
     CFNotificationCenterRef center = CFNotificationCenterGetDarwinNotifyCenter();
     CFNotificationCenterAddObserver(center, NULL, NCPreferencesChanged, CFSTR("com.ratnik00.nextclock/preferenceschanged"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
     CFNotificationCenterAddObserver(center, NULL, NCRespring, CFSTR("com.ratnik00.nextclock/respring"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
@@ -211,41 +323,113 @@ static void NCStart(void) {
 - (void)setDate:(NSDate *)date;
 @end
 
+static BOOL NCStatusSubtitleVisible(UIView *clockView) {
+    Class subtitleClass =
+        NSClassFromString(@"SBFLockScreenDateSubtitleView");
+
+    Class dateClass =
+        NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
+
+    for (UIView *view in clockView.subviews) {
+        BOOL isSubtitle =
+            subtitleClass && [view isKindOfClass:subtitleClass];
+
+        BOOL isDate =
+            dateClass && [view isKindOfClass:dateClass];
+
+        if (isSubtitle && !isDate &&
+            !view.hidden && view.alpha > 0.01) {
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
 %hook SBFLockScreenDateView
 - (void)layoutSubviews {
     %orig;
-    NCStart(); [NCViews addObject:self];
+    NCStart();
+     [NCViews addObject:self];
+    NCUpdateSecondsTimer();
     UIView *timeLabel = nil, *dateLabel = nil;
     Class timeClass = NSClassFromString(@"SBUILegibilityLabel"), dateClass = NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
     for (UIView *view in self.subviews) {
         if (timeClass && [view isKindOfClass:timeClass]) timeLabel = view;
         if (dateClass && [view isKindOfClass:dateClass]) dateLabel = view;
     }
-    if (!timeLabel) return;
-    dateLabel.alpha = NCEnabled && NCHideDate ? 0 : 1;
     NCClockState *state = objc_getAssociatedObject(self, &NCStateKey);
+    if (!timeLabel) {
+        state.overlay.hidden = YES; state.signature = nil;
+        for (UIImageView *view in state.views) NCClearView(view);
+        return;
+    }
+    NSNumber *savedTimeAlpha = objc_getAssociatedObject(self, &NCContentAlphaKey);
+    CGFloat systemTimeAlpha = savedTimeAlpha ? savedTimeAlpha.doubleValue : 1;
+    NSNumber *savedDateAlpha =
+        objc_getAssociatedObject(self, &NCDateAlphaKey);
+
+    CGFloat systemDateAlpha =
+        savedDateAlpha ? savedDateAlpha.doubleValue : dateLabel.alpha;
+
+    if (dateLabel && !savedDateAlpha) {
+        objc_setAssociatedObject(
+            self,
+            &NCDateAlphaKey,
+            @(systemDateAlpha),
+            OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        );
+    }
+
+    dateLabel.alpha =
+    NCEnabled && (NCHideDate || NCStatusSubtitleVisible(self)) ? 0 : systemDateAlpha;
+    if (NCEnabled && NCStatusSubtitleVisible(self)) {
+        timeLabel.alpha = 0;
+        dateLabel.alpha = 0;
+        state.overlay.hidden = YES;
+        state.signature = nil;
+        for (UIImageView *view in state.views) NCClearView(view);
+        return;
+    }
     if (!NCEnabled) {
-        timeLabel.alpha = 1; state.overlay.hidden = YES; state.signature = nil;
+        timeLabel.alpha = systemTimeAlpha; state.overlay.hidden = YES; state.signature = nil;
         for (UIImageView *view in state.views) NCClearView(view);
         return;
     }
     BOOL wanted = NCWantsAnimation();
-    NSDate *date = [self respondsToSelector:@selector(date)] ? [self date] : nil;
+    NSDate *date = NCShowSeconds
+        ? NSDate.date
+        : ([self respondsToSelector:@selector(date)] ? [self date] : nil);
+
     NSString *time = NCTime(date ?: NSDate.date);
     NSString *signature = [NSString stringWithFormat:@"%@|%@|%@|%lu|%d", time,
         NSStringFromCGRect(timeLabel.frame), NSStringFromCGRect(self.bounds), (unsigned long)NCGeneration, wanted];
-    if (state && [state.signature isEqual:signature] && !state.overlay.hidden) { timeLabel.alpha = 0; return; }
+    if (state && [state.signature isEqual:signature] && !state.overlay.hidden) {
+        // Core Animation can discard animations while the lock screen is detached.
+        for (UIImageView *view in state.views) {
+            NCGlyph *glyph = objc_getAssociatedObject(view, &NCGlyphKey);
+            if (!view.hidden && glyph) NCSetGlyph(view, glyph, state.animated);
+        }
+        timeLabel.alpha = 0; return;
+    }
     NSString *folder = NCFolder(wanted);
     NSMutableArray<NCGlyph *> *glyphs = [NSMutableArray array];
+    NSMutableDictionary<NSString *, NCGlyph *> *loaded = [NSMutableDictionary dictionary];
+    // Bound the decoded frames retained by one clock row, including animated packs.
+    NSUInteger remainingBytes = 48 * 1024 * 1024;
     for (NSUInteger i = 0; folder && i < time.length; i++) {
         NSString *symbol = [time substringWithRange:NSMakeRange(i, 1)];
         NSString *name = [symbol isEqual:@":"] ? @"colon" : symbol;
         NSString *path = NCGlyphPath(folder, name);
-        NCGlyph *glyph = path ? NCDecode(path, wanted) : nil;
+        NCGlyph *glyph = path ? loaded[path] : nil;
+        if (!glyph && path) {
+            glyph = NCDecode(path, wanted, remainingBytes);
+            if (glyph) { loaded[path] = glyph; remainingBytes -= glyph.cost; }
+        }
         if (!glyph) { [glyphs removeAllObjects]; break; } [glyphs addObject:glyph];
     }
     if (!glyphs.count) {
-        timeLabel.alpha = 1; state.overlay.hidden = YES; state.signature = nil;
+        timeLabel.alpha = systemTimeAlpha; state.overlay.hidden = YES; state.signature = nil;
         for (UIImageView *view in state.views) NCClearView(view);
         return;
     }
@@ -256,6 +440,8 @@ static void NCStart(void) {
     }
     if (state.overlay.superview != self) [self addSubview:state.overlay];
     state.overlay.frame = self.bounds; state.overlay.hidden = NO;
+    NSNumber *systemAlpha = objc_getAssociatedObject(self, &NCContentAlphaKey);
+    state.overlay.alpha = systemAlpha ? systemAlpha.doubleValue : 1;
     while (state.views.count < glyphs.count) {
         UIImageView *view = [UIImageView new]; view.contentMode = UIViewContentModeScaleAspectFit; view.userInteractionEnabled = NO;
         [state.overlay addSubview:view]; [state.views addObject:view];
@@ -267,7 +453,7 @@ static void NCStart(void) {
     CGFloat height = rect.size.height * NCScale, gaps = NCSpacing * (glyphs.count - 1);
     CGFloat widthLimit = MAX(0, self.bounds.size.width - 32);
     if (aspectSum <= 0 || widthLimit - gaps <= 0 || height <= 0) {
-        state.overlay.hidden = YES; timeLabel.alpha = 1; state.signature = nil;
+        state.overlay.hidden = YES; timeLabel.alpha = systemTimeAlpha; state.signature = nil;
         for (UIImageView *view in state.views) NCClearView(view); return;
     }
     // Keep the full row inside the screen on iOS 15, even with wide custom artwork.
@@ -280,17 +466,112 @@ static void NCStart(void) {
         view.hidden = NO; view.frame = CGRectMake(x - self.bounds.origin.x, y - self.bounds.origin.y, glyphWidth, height);
         NCSetGlyph(view, glyphs[i], wanted); x += glyphWidth + NCSpacing;
     }
-    timeLabel.alpha = 0; state.signature = signature;
+    timeLabel.alpha = 0; state.signature = signature; state.animated = wanted;
 }
 - (void)setDate:(NSDate *)date {
     %orig;
     [self setNeedsLayout];
 }
-- (void)didMoveToWindow {
+    - (void)didMoveToWindow {
+        %orig;
+
+        NCClockState *state =
+            objc_getAssociatedObject(self, &NCStateKey);
+
+        if (!self.window) {
+            for (UIImageView *view in state.views) {
+                NCClearView(view);
+            }
+
+            state.signature = nil;
+        } else {
+            [self setNeedsLayout];
+        }
+
+        NCUpdateSecondsTimer();
+    }
+%end
+// Follow the system clock's visibility during the battery presentation.
+// Keep this hook separate: private methods may differ between iOS versions.
+%group NCSystemClockVisibility
+%hook SBFLockScreenDateView
+- (void)setContentAlpha:(CGFloat)alpha withSubtitleVisible:(BOOL)subtitleVisible {
+    objc_setAssociatedObject(self, &NCContentAlphaKey, @(alpha), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     %orig;
-    NCClockState *state = objc_getAssociatedObject(self, &NCStateKey);
-    if (!self.window) { for (UIImageView *view in state.views) NCClearView(view); state.signature = nil; }
-    else [self setNeedsLayout];
+    Class dateClass =
+        NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
+
+    CGFloat systemDateAlpha = subtitleVisible ? alpha : 0;
+
+    objc_setAssociatedObject(
+        self,
+        &NCDateAlphaKey,
+        @(systemDateAlpha),
+        OBJC_ASSOCIATION_RETAIN_NONATOMIC
+    );
+
+    for (UIView *view in self.subviews) {
+        if (dateClass && [view isKindOfClass:dateClass]) {
+            view.alpha =
+                NCEnabled && (NCHideDate || NCStatusSubtitleVisible(self)) ? 0 : systemDateAlpha;
+        }
+    }
+    NCClockState *state =
+        objc_getAssociatedObject(self, &NCStateKey);
+    // Runs in the system's animation transaction, including the return to the clock.
+    state.overlay.alpha = NCEnabled && NCStatusSubtitleVisible(self) ? 0 : alpha;
+    [self setNeedsLayout];
+    // The original setter may make the text visible again. Our overlay replaces it.
+    if (NCEnabled && state.overlay && !state.overlay.hidden) {
+        Class timeClass = NSClassFromString(@"SBUILegibilityLabel");
+        for (UIView *view in self.subviews) {
+            if (timeClass && [view isKindOfClass:timeClass]) view.alpha = 0;
+        }
+    }
 }
 %end
-%ctor { @autoreleasepool { %init; } }
+%end
+
+@interface SBFLockScreenDateSubtitleView : UIView
+@end
+
+static void NCSubtitleChanged(UIView *view) {
+    Class dateClass = NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
+    if (dateClass && [view isKindOfClass:dateClass]) return;
+    NCRefreshViews();
+}
+
+%group NCStatusSubtitleUpdates
+%hook SBFLockScreenDateSubtitleView
+- (void)setAlpha:(CGFloat)alpha {
+    BOOL changed = self.alpha != alpha;
+    %orig;
+    if (changed) NCSubtitleChanged(self);
+}
+- (void)setHidden:(BOOL)hidden {
+    BOOL changed = self.hidden != hidden;
+    %orig;
+    if (changed) NCSubtitleChanged(self);
+}
+- (void)didMoveToSuperview {
+    %orig;
+    NCSubtitleChanged(self);
+}
+%end
+%end
+
+%ctor {
+    @autoreleasepool {
+        %init;
+        if (NSClassFromString(@"SBFLockScreenDateSubtitleView")) {
+            %init(NCStatusSubtitleUpdates);
+        }
+        Class dateClass = NSClassFromString(@"SBFLockScreenDateView");
+        SEL selector = @selector(setContentAlpha:withSubtitleVisible:);
+        if (class_getInstanceMethod(dateClass, selector)) {
+            %init(NCSystemClockVisibility);
+        } else {
+            NSLog(@"[NextClock] System clock visibility method unavailable on this iOS version");
+        }
+    }
+}
