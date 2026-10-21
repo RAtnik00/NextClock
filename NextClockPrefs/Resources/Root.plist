@@ -236,20 +236,20 @@
 				<string>24-hour</string>
 			</array>
 		</dict>
-        <dict>
-            <key>cell</key>
-            <string>PSSwitchCell</string>
-            <key>label</key>
-            <string>Show seconds</string>
-            <key>key</key>
-            <string>showSeconds</string>
-            <key>default</key>
-            <false/>
-            <key>defaults</key>
-            <string>com.ratnik00.nextclock</string>
-            <key>PostNotification</key>
-            <string>com.ratnik00.nextclock/preferenceschanged</string>
-        </dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>label</key>
+			<string>Show seconds</string>
+			<key>key</key>
+			<string>showSeconds</string>
+			<key>default</key>
+			<false/>
+			<key>defaults</key>
+			<string>com.ratnik00.nextclock</string>
+			<key>PostNotification</key>
+			<string>com.ratnik00.nextclock/preferenceschanged</string>
+		</dict>
 		<dict>
 			<key>cell</key>
 			<string>PSSwitchCell</string>
@@ -377,6 +377,22 @@
 			<true/>
 			<key>nextClockPage</key>
 			<string>About</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>BETA TESTING</string>
+			<key>footerText</key>
+			<string>Beta: iOS 16–17 support is experimental and has not been verified on a device. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Export diagnostics</string>
+			<key>action</key>
+			<string>exportDiagnostics</string>
 		</dict>
 	</array>
 </dict>

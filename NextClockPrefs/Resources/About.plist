@@ -12,7 +12,7 @@
 			<key>label</key>
 			<string>NEXTCLOCK</string>
 			<key>footerText</key>
-			<string>Custom lock screen clocks for iOS 15 with static and animated digit packs.</string>
+			<string>Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta.</string>
 		</dict>
 		<dict>
 			<key>cell</key>
@@ -24,7 +24,7 @@
 			<key>cell</key>
 			<string>PSStaticTextCell</string>
 			<key>label</key>
-			<string>Version: 1.0.1</string>
+			<string>Version: 1.1.0~beta1</string>
 		</dict>
 	</array>
 </dict>

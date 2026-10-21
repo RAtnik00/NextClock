@@ -73,3 +73,11 @@
 "NextClock is free. Support is completely optional and does not unlock extra features." = "NextClock бесплатный. Поддержка полностью добровольная и не открывает дополнительных функций.";
 "Unable to open the support page. Please try again later." = "Не удалось открыть страницу поддержки. Попробуйте позже.";
 "Show seconds" = "Показывать секунды";
+
+// 1.1.0 beta testing
+"BETA TESTING" = "БЕТА-ТЕСТИРОВАНИЕ";
+"Export diagnostics" = "Экспорт диагностики";
+"Beta: iOS 16–17 support is experimental and has not been verified on a device. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Бета: поддержка iOS 16–17 экспериментальная и ещё не проверена на устройстве. iOS 15 поддерживается. Сообщите модель, точную версию iOS и jailbreak.";
+"Version: 1.1.0~beta1" = "Версия: 1.1.0~beta1";
+"Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta." = "Часы экрана блокировки. iOS 15 поддерживается; iOS 16–17 — экспериментальная бета.";
+"No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." = "Отчёта пока нет. Перезапустите SpringBoard, заблокируйте и включите экран, затем повторите.";

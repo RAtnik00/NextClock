@@ -206,6 +206,27 @@ static NSString *NCText(NSString *key) {
         });
     });
 }
+- (void)exportDiagnostics {
+    NSString *path = @"/var/mobile/Library/NextClock-compatibility.txt";
+    if (![NSFileManager.defaultManager fileExistsAtPath:path]) {
+        [self showMessage:@"No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." title:@"NextClock"];
+        return;
+    }
+    NSError *error = nil;
+    NSURL *copy = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:
+        [NSString stringWithFormat:@"NextClock-diagnostics-%@.txt", NSUUID.UUID.UUIDString]]];
+    if (![NSFileManager.defaultManager copyItemAtURL:[NSURL fileURLWithPath:path] toURL:copy error:&error]) {
+        [self showMessage:error.localizedDescription title:@"NextClock"]; return;
+    }
+    UIActivityViewController *share = [[UIActivityViewController alloc]
+        initWithActivityItems:@[copy] applicationActivities:nil];
+    share.popoverPresentationController.sourceView = self.view;
+    share.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds), 1, 1);
+    share.completionWithItemsHandler = ^(UIActivityType type, BOOL completed, NSArray *items, NSError *failure) {
+        [NSFileManager.defaultManager removeItemAtURL:copy error:nil];
+    };
+    [self presentViewController:share animated:YES completion:nil];
+}
 - (void)resetSettings {
     UIAlertController *alert=[UIAlertController alertControllerWithTitle:NCText(@"Reset settings?")
         message:NCText(@"All clock settings will return to defaults. Installed packs will be kept.") preferredStyle:UIAlertControllerStyleAlert];
