@@ -1,6 +1,6 @@
 Package: com.ratnik00.nextclock
 Name: NextClock
-Version: 1.1.0~beta1
+Version: 1.1.0~beta2
 Architecture: iphoneos-arm64
 Description: Animated clocks. iOS 15 support; experimental iOS 16-17 beta, device testing required.
 Maintainer: RAtnik00

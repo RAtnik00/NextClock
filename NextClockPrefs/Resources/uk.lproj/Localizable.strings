@@ -78,6 +78,6 @@
 "BETA TESTING" = "БЕТА-ТЕСТУВАННЯ";
 "Export diagnostics" = "Експорт діагностики";
 "Beta: iOS 16–17 support is experimental and has not been verified on a device. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Бета: підтримка iOS 16–17 експериментальна й ще не перевірена на пристрої. iOS 15 підтримується. Повідомте модель, точну версію iOS та jailbreak.";
-"Version: 1.1.0~beta1" = "Версія: 1.1.0~beta1";
+"Version: 1.1.0~beta2" = "Версія: 1.1.0~beta2";
 "Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta." = "Годинник екрана блокування. iOS 15 підтримується; iOS 16–17 — експериментальна бета.";
 "No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." = "Звіту поки немає. Перезапустіть SpringBoard, заблокуйте й увімкніть екран, потім повторіть.";

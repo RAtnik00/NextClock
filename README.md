@@ -7,7 +7,7 @@ Custom lock screen clocks for rootless iOS 15, with an experimental iOS 16–17 
 ## Compatibility
 
 - Rootless iOS 15: previously tested devices listed below
-- iOS 16–17: experimental, no on-device verification yet
+- iOS 16–17: experimental; limited tester reports, not universal compatibility
 - Includes arm64 and arm64e binaries for both the tweak and preferences bundle
 - Requires PreferenceLoader
 
@@ -17,6 +17,15 @@ Confirmed working:
 - iPhone 13 Pro Max — iOS 15.1.1, Dopamine (compatibility fix confirmed by a tester)
 
 The optional seconds display has been tested on iPhone 7 Plus; it has not yet been separately verified on iPhone 12 or iPhone 13 Pro Max. Other devices and iOS 15 versions require testing.
+
+## 1.1.0~beta2 — public testing
+
+- Fixed adapter selection when `setDisplayDate:` exists without a `displayDate` getter; the date is now captured from the setter.
+- Added guarded subtitle-update hooks and transient-subtitle detection to address charging/status overlap.
+- Added per-instance stock-time alpha suppression while NextClock replaces the clock, targeting wallpaper and music-artwork transitions.
+- Expanded startup diagnostics with selector availability and method names.
+
+The adapter-selection fix was confirmed by a tester on iPhone X, iOS 16.1.2, Roothide 2.4.9.27; seconds and date hiding also worked. The newest charging and transition changes are not yet device-verified. Test wallpaper switching, first lock, music-artwork expansion, charging, and disabling NextClock to restore the stock clock. Earlier beta reports also describe working clocks/custom packs on iOS 17.0.2 (iPhone SE 2020) and iPadOS 17.4 (iPad 8); jailbreak/build details have not all been independently confirmed.
 
 ## 1.1.0~beta1 — public testing
 

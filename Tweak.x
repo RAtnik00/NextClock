@@ -571,17 +571,19 @@ static void NCSubtitleChanged(UIView *view) {
 
 // Experimental adapter: selector names verified only against an upstream iOS 18
 // class dump. Runtime availability checks do not establish iOS 16/17 compatibility.
+static char NCModernDisplayDateKey;
+static char NCModernSuppressTimeKey;
 @interface CSProminentDisplayView : UIView
 - (UIView *)timeView;
 - (UIView *)subtitleView;
-- (NSDate *)displayDate;
+- (UIView *)transientSubtitleView;
 @end
 
 static void NCCompatibilitySnapshot(UIView *host) {
     static BOOL captured = NO;
     if (captured) return;
     captured = YES;
-    NSMutableString *report = [NSMutableString stringWithFormat:@"NextClock 1.1.0~beta1 (experimental)\niOS: %@\n", UIDevice.currentDevice.systemVersion];
+    NSMutableString *report = [NSMutableString stringWithFormat:@"NextClock 1.1.0~beta2 (experimental)\niOS: %@\n", UIDevice.currentDevice.systemVersion];
     NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:host];
     for (NSUInteger i = 0; i < queue.count && i < 120; i++) {
         UIView *view = queue[i];
@@ -596,6 +598,12 @@ static void NCCompatibilitySnapshot(UIView *host) {
 %group NCModernClock
 %hook CSProminentDisplayView
 - (void)layoutSubviews {
+    // Allow the renderer to restore stock content on every fallback path.
+    UIView *previousTime = self.timeView;
+    if ([previousTime isKindOfClass:UIView.class]) {
+        objc_setAssociatedObject(previousTime, &NCModernSuppressTimeKey, nil,
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
     %orig;
     NCCompatibilitySnapshot(self);
     UIView *time = self.timeView;
@@ -603,19 +611,71 @@ static void NCCompatibilitySnapshot(UIView *host) {
     UIView *subtitle = self.subtitleView;
     Class dateClass = NSClassFromString(@"CSProminentSubtitleDateView");
     UIView *date = dateClass && [subtitle isKindOfClass:dateClass] ? subtitle : nil;
-    if (subtitle && !date && !subtitle.hidden && subtitle.alpha > .01) {
-        NCClockState *state = objc_getAssociatedObject(self, &NCStateKey);
-        if (state.overlay && !state.overlay.hidden) {
-            state.overlay.hidden = YES; state.signature = nil;
-            for (UIImageView *image in state.views) NCClearView(image);
-            NSNumber *saved = objc_getAssociatedObject(self, &NCContentAlphaKey);
-            time.alpha = saved ? saved.doubleValue : 1;
+    UIView *transient = nil;
+
+    if ([self respondsToSelector:@selector(transientSubtitleView)]) {
+        transient = self.transientSubtitleView;
+    }
+
+    BOOL transientVisible =
+        [transient isKindOfClass:UIView.class] &&
+        transient.superview &&
+        !transient.hidden &&
+        transient.alpha > 0.01;
+
+    BOOL statusVisible =
+        subtitle && !date &&
+        !subtitle.hidden && subtitle.alpha > 0.01;
+
+    if (NCEnabled && (transientVisible || statusVisible)) {
+        NCClockState *state =
+            objc_getAssociatedObject(self, &NCStateKey);
+
+        // Preserve the date's original alpha before hiding it.
+        if (date &&
+            !objc_getAssociatedObject(self, &NCDateAlphaKey)) {
+            objc_setAssociatedObject(
+                self,
+                &NCDateAlphaKey,
+                @(date.alpha),
+                OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            );
         }
+
+        objc_setAssociatedObject(time, &NCModernSuppressTimeKey, @YES,
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        time.alpha = 0;
+        date.alpha = 0;
+        state.overlay.hidden = YES;
+        state.signature = nil;
+
+        for (UIImageView *image in state.views) {
+            NCClearView(image);
+        }
+
+        NCUpdateSecondsTimer();
         return;
     }
-    NCLayoutClock(self, time, date, self.displayDate);
+    NSDate *displayDate =
+        objc_getAssociatedObject(self, &NCModernDisplayDateKey);
+
+    NCLayoutClock(self, time, date, displayDate ?: [NSDate date]);
+    NCClockState *rendered = objc_getAssociatedObject(self, &NCStateKey);
+    BOOL replacingTime = NCEnabled && rendered.overlay &&
+        rendered.overlay.superview == self && !rendered.overlay.hidden;
+    objc_setAssociatedObject(time, &NCModernSuppressTimeKey,
+                             replacingTime ? @YES : nil,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    if (replacingTime) time.alpha = 0;
 }
 - (void)setDisplayDate:(NSDate *)date {
+    objc_setAssociatedObject(
+        self,
+        &NCModernDisplayDateKey,
+        date,
+        OBJC_ASSOCIATION_COPY_NONATOMIC
+    );
+
     %orig;
     [self setNeedsLayout];
 }
@@ -631,27 +691,105 @@ static void NCCompatibilitySnapshot(UIView *host) {
 %end
 %end
 
+// The system can restore the time view's alpha outside its host's layout,
+// for example while switching wallpapers or expanding music artwork.
+// Only suppress instances explicitly owned by an active NextClock renderer.
+@interface CSProminentTimeView : UIView
+@end
+
+%group NCModernTimeVisibility
+%hook CSProminentTimeView
+- (void)setAlpha:(CGFloat)alpha {
+    BOOL suppress = NCEnabled &&
+        [objc_getAssociatedObject(self, &NCModernSuppressTimeKey) boolValue];
+    %orig(suppress ? 0 : alpha);
+}
+- (void)layoutSubviews {
+    %orig;
+    if (NCEnabled &&
+        [objc_getAssociatedObject(self, &NCModernSuppressTimeKey) boolValue]) {
+        self.alpha = 0;
+    }
+}
+%end
+%end
+
+// Re-evaluate the overlay when transient system subtitles change.
+%group NCModernSubtitleUpdates
+%hook CSProminentDisplayView
+- (void)setSubtitleAlpha:(CGFloat)alpha {
+    %orig;
+    [self setNeedsLayout];
+}
+- (void)setTransientSubtitleView:(UIView *)view {
+    %orig;
+    [self setNeedsLayout];
+}
+%end
+%end
+
 %ctor {
     @autoreleasepool {
         Class modernClass = NSClassFromString(@"CSProminentDisplayView");
         BOOL modern = UIDevice.currentDevice.systemVersion.doubleValue >= 16 && modernClass &&
             class_getInstanceMethod(modernClass, @selector(timeView)) &&
             class_getInstanceMethod(modernClass, @selector(subtitleView)) &&
-            class_getInstanceMethod(modernClass, @selector(displayDate)) &&
             class_getInstanceMethod(modernClass, @selector(setDisplayDate:));
         Class legacyClass = NSClassFromString(@"SBFLockScreenDateView");
         BOOL legacy = legacyClass && class_getInstanceMethod(legacyClass, @selector(date)) &&
             class_getInstanceMethod(legacyClass, @selector(setDate:));
         NSMutableString *startupReport = [NSMutableString stringWithFormat:
-            @"NextClock 1.1.0~beta1 (experimental)\niOS: %@\nAdapter: %@\n",
+            @"NextClock 1.1.0~beta2 (experimental)\niOS: %@\nAdapter: %@\n",
             UIDevice.currentDevice.systemVersion, modern ? @"prominent (untested)" : (legacy ? @"legacy" : @"none; required classes unavailable")];
         for (NSString *name in @[@"SBFLockScreenDateView", @"CSProminentDisplayView", @"CSProminentTimeView", @"CSProminentSubtitleDateView"]) {
             [startupReport appendFormat:@"%@: %@\n", name, NSClassFromString(name) ? @"present" : @"absent"];
+        }
+        [startupReport appendString:@"\nModern adapter methods:\n"];
+
+        for (NSString *name in @[
+            @"timeView",
+            @"subtitleView",
+            @"displayDate",
+            @"setDisplayDate:"
+        ]) {
+            SEL selector = NSSelectorFromString(name);
+            Method method = modernClass
+                ? class_getInstanceMethod(modernClass, selector)
+                : NULL;
+
+            [startupReport appendFormat:@"%@: %@\n",
+                name, method ? @"present" : @"absent"];
+        }
+
+        [startupReport appendString:@"\nAvailable instance methods:\n"];
+
+        if (modernClass) {
+            unsigned int count = 0;
+            Method *methods = class_copyMethodList(modernClass, &count);
+
+            for (unsigned int i = 0; i < count; i++) {
+                [startupReport appendFormat:@"%@\n",
+                    NSStringFromSelector(method_getName(methods[i]))];
+            }
+
+            free(methods);
         }
         [startupReport writeToFile:@"/var/mobile/Library/NextClock-compatibility.txt"
             atomically:YES encoding:NSUTF8StringEncoding error:nil];
         if (modern) {
             %init(NCModernClock);
+            Class modernTimeClass = NSClassFromString(@"CSProminentTimeView");
+            if (modernTimeClass && [modernTimeClass isSubclassOfClass:UIView.class] &&
+                class_getInstanceMethod(modernTimeClass, @selector(setAlpha:)) &&
+                class_getInstanceMethod(modernTimeClass, @selector(layoutSubviews))) {
+                %init(NCModernTimeVisibility);
+            }
+            BOOL subtitleUpdatesAvailable =
+                class_getInstanceMethod(modernClass, @selector(setSubtitleAlpha:)) &&
+                class_getInstanceMethod(modernClass, @selector(setTransientSubtitleView:));
+            if (subtitleUpdatesAvailable) {
+                %init(NCModernSubtitleUpdates);
+            }
             NSLog(@"[NextClock] Experimental modern adapter selected; runtime testing required");
         } else if (legacy) {
             %init(NCLegacyClock);
