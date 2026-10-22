@@ -147,6 +147,16 @@ static void NCClearView(UIImageView *view) {
     [view.layer removeAnimationForKey:@"NextClock.frames"]; view.image = nil;
     objc_setAssociatedObject(view, &NCGlyphKey, nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
+// Keep a small static fallback while detached, without retaining decoded animations.
+static void NCFreezeView(UIImageView *view) {
+    NCGlyph *glyph = objc_getAssociatedObject(view, &NCGlyphKey);
+    UIImage *still = glyph.frames.firstObject ?: view.image;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    NCClearView(view);
+    view.image = still;
+    [CATransaction commit];
+}
 static void NCSetGlyph(UIImageView *view, NCGlyph *glyph, BOOL animate) {
     BOOL moving = animate && glyph.frames.count > 1;
     if (objc_getAssociatedObject(view, &NCGlyphKey) == glyph &&
@@ -293,7 +303,15 @@ static void NCStart(void) {
             NCUpdateSecondsTimer();
 
             if (NCScreenOn) {
-                NCRefreshViews();
+                // Complete the clock update before the next visible frame.
+                [UIView performWithoutAnimation:^{
+                    for (UIView *view in NCViews.allObjects) {
+                        if (!view.window) continue;
+                        [view setNeedsLayout];
+                        [view layoutIfNeeded];
+                    }
+                }];
+                NCUpdateSecondsTimer();
             }
         }
     );
@@ -486,13 +504,13 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
             objc_getAssociatedObject(self, &NCStateKey);
 
         if (!self.window) {
-            for (UIImageView *view in state.views) {
-                NCClearView(view);
-            }
-
+            for (UIImageView *view in state.views) NCFreezeView(view);
             state.signature = nil;
         } else {
-            [self setNeedsLayout];
+            [UIView performWithoutAnimation:^{
+                [self setNeedsLayout];
+                [self layoutIfNeeded];
+            }];
         }
 
         NCUpdateSecondsTimer();
@@ -583,7 +601,7 @@ static void NCCompatibilitySnapshot(UIView *host) {
     static BOOL captured = NO;
     if (captured) return;
     captured = YES;
-    NSMutableString *report = [NSMutableString stringWithFormat:@"NextClock 1.1.0~beta2 (experimental)\niOS: %@\n", UIDevice.currentDevice.systemVersion];
+    NSMutableString *report = [NSMutableString stringWithFormat:@"NextClock 1.1.0~beta3 (experimental)\niOS: %@\n", UIDevice.currentDevice.systemVersion];
     NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:host];
     for (NSUInteger i = 0; i < queue.count && i < 120; i++) {
         UIView *view = queue[i];
@@ -683,9 +701,14 @@ static void NCCompatibilitySnapshot(UIView *host) {
     %orig;
     NCClockState *state = objc_getAssociatedObject(self, &NCStateKey);
     if (!self.window) {
-        for (UIImageView *image in state.views) NCClearView(image);
+        for (UIImageView *image in state.views) NCFreezeView(image);
         state.signature = nil;
-    } else [self setNeedsLayout];
+    } else {
+        [UIView performWithoutAnimation:^{
+            [self setNeedsLayout];
+            [self layoutIfNeeded];
+        }];
+    }
     NCUpdateSecondsTimer();
 }
 %end
@@ -739,7 +762,7 @@ static void NCCompatibilitySnapshot(UIView *host) {
         BOOL legacy = legacyClass && class_getInstanceMethod(legacyClass, @selector(date)) &&
             class_getInstanceMethod(legacyClass, @selector(setDate:));
         NSMutableString *startupReport = [NSMutableString stringWithFormat:
-            @"NextClock 1.1.0~beta2 (experimental)\niOS: %@\nAdapter: %@\n",
+            @"NextClock 1.1.0~beta3 (experimental)\niOS: %@\nAdapter: %@\n",
             UIDevice.currentDevice.systemVersion, modern ? @"prominent (untested)" : (legacy ? @"legacy" : @"none; required classes unavailable")];
         for (NSString *name in @[@"SBFLockScreenDateView", @"CSProminentDisplayView", @"CSProminentTimeView", @"CSProminentSubtitleDateView"]) {
             [startupReport appendFormat:@"%@: %@\n", name, NSClassFromString(name) ? @"present" : @"absent"];

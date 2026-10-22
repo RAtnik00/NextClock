@@ -17,7 +17,7 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>1.1.0b2</string>
+	<string>1.1.0b3</string>
 	<key>NSPrincipalClass</key>
 	<string>NCRootListControllerRootListController</string>
 	<key>CFBundleLocalizations</key>
@@ -25,6 +25,10 @@
 		<string>en</string>
 		<string>ru</string>
 		<string>uk</string>
+		<string>de</string>
+		<string>pl</string>
+		<string>sv</string>
+		<string>nb</string>
 	</array>
 </dict>
 </plist>

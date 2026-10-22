@@ -18,6 +18,14 @@ Confirmed working:
 
 The optional seconds display has been tested on iPhone 7 Plus; it has not yet been separately verified on iPhone 12 or iPhone 13 Pro Max. Other devices and iOS 15 versions require testing.
 
+## 1.1.0~beta3 — public testing
+
+- Added German, Polish, Swedish and Norwegian Bokmål preferences (80 strings per language), selected from the phone's preferred languages. English remains the fallback.
+- Added an experimental wake-up flicker fix: detached clock views retain a static digit frame while animation data is released, and attached/awake clocks request an immediate layout without animation.
+- Includes the adapter, charging/status and wallpaper/music-transition changes from beta 2.
+
+The wake-up change builds for arm64/arm64e but has not yet been confirmed on a tester's device. Please test repeated screen wake/sleep, minute and seconds updates, bundled/custom packs, charging, wallpaper/music transitions and disabling NextClock. Translations still need native-speaker and device-layout review. Report the installed package version with each issue.
+
 ## 1.1.0~beta2 — public testing
 
 - Fixed adapter selection when `setDisplayDate:` exists without a `displayDate` getter; the date is now captured from the setter.
@@ -36,7 +44,7 @@ Settings → NextClock → Export diagnostics shares a structural report (iOS ve
 Circuit 1.2 is bundled with transparent APNG light effects and static fallbacks. Earlier visual drafts remain under Assets/PackDrafts and are not installed.
 
 ## Features
-PNG/GIF/APNG; static and animated modes; exact frame delays; shared animation timeline; speed; still images in Low Power Mode; tint preserving shading; 12/24/system time; optional seconds display; hide date; size, spacing, offset; live preferences; pack details, import, selection, deletion; reset and respring. Automatic English, Russian and Ukrainian preferences localization (English fallback). Clock and date yield to temporary system status text, including charging.
+PNG/GIF/APNG; static and animated modes; exact frame delays; shared animation timeline; speed; still images in Low Power Mode; tint preserving shading; 12/24/system time; optional seconds display; hide date; size, spacing, offset; live preferences; pack details, import, selection, deletion; reset and respring. Automatic English, Russian, Ukrainian, German, Polish, Swedish and Norwegian Bokmål preferences localization (English fallback). Clock and date yield to temporary system status text, including charging.
 
 ## Packs
 A folder contains optional Info.plist and static/, animated/, or both. Each variant contains all 11 glyphs (0–9 and colon) as GIF or PNG. APNG uses .png. Metadata: Name, Version, Author, optional FormatVersion = 1. Existing .flexpack folders work. ZIP and .nextclock files are ordinary ZIP archives containing a pack directly or in one enclosing folder. Each import creates a separate copy and preserves existing packs.
