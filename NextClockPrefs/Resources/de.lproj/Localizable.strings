@@ -39,7 +39,6 @@
 "Anime" = "Anime";
 "Custom lock screen clocks for iOS 15 with static and animated digit packs." = "Eigene Sperrbildschirmuhren für iOS 15 mit statischen und animierten Ziffernpaketen.";
 "Developer: RAtnik00" = "Entwickler: RAtnik00";
-"Version: 1.0.1" = "Version: 1.0.1";
 "Version: %@" = "Version: %@";
 "Author: %@" = "Autor: %@";
 "User pack" = "Importiertes Paket";
@@ -75,7 +74,10 @@
 "Show seconds" = "Sekunden anzeigen";
 "BETA TESTING" = "BETA-TEST";
 "Export diagnostics" = "Diagnose exportieren";
-"Beta: iOS 16–17 support is experimental and has not been verified on a device. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Beta: Die Unterstützung für iOS 16–17 ist experimentell und wurde noch nicht auf einem Gerät überprüft. iOS 15 wird weiterhin unterstützt. Bitte gib dein Modell, die genaue iOS-Version und den Jailbreak an.";
-"Version: 1.1.0~beta3" = "Version: 1.1.0~beta3";
+"iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Die Unterstützung für iOS 16–17 ist experimentell und wurde nur auf wenigen Geräten getestet. iOS 15 wird weiterhin unterstützt. Bitte Modell, genaue iOS-Version und Jailbreak angeben.";
 "Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta." = "Eigene Sperrbildschirmuhren. iOS 15 wird unterstützt; iOS 16–17 als experimentelle Beta.";
 "No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." = "Noch kein Diagnosebericht vorhanden. Starte SpringBoard neu, sperre das Gerät, aktiviere den Bildschirm und versuche es erneut.";
+
+// Halloween edition
+"🎃 Happy Halloween!" = "🎃 Fröhliches Halloween!";
+"Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Feiere mit dem animierten Halloween-Paket. Wähle unter „Paket“ Halloween aus.";

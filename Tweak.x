@@ -7,6 +7,7 @@
 #import <stdlib.h>
 #import <math.h>
 #import "Shared/NCPacks.h"
+#import "Shared/NCVersion.h"
 #import <notify.h>
 
 // iOS 15 plus an experimental runtime-selected iOS 16/17 adapter. All rendering and settings changes run on the main thread.
@@ -25,6 +26,7 @@ static BOOL NCResolvedWanted;
 static BOOL NCStarted = NO;
 static CFTimeInterval NCEpoch = 0;
 static char NCStateKey, NCGlyphKey, NCContentAlphaKey, NCDateAlphaKey;
+static char NCLegacyTimeSuppressionKey;
 
 @interface NCGlyph : NSObject
 @property(nonatomic, copy) NSArray<UIImage *> *frames;
@@ -166,6 +168,8 @@ static void NCSetGlyph(UIImageView *view, NCGlyph *glyph, BOOL animate) {
     if (!moving) return;
     NSMutableArray *contents = [NSMutableArray array];
     for (UIImage *frame in glyph.frames) [contents addObject:(__bridge id)frame.CGImage];
+    // The closing key time is 1.0; repeat the first frame at that boundary.
+    [contents addObject:contents.firstObject];
     CAKeyframeAnimation *animation = [CAKeyframeAnimation animationWithKeyPath:@"contents"];
     animation.values = contents; animation.keyTimes = glyph.keyTimes;
     animation.calculationMode = kCAAnimationDiscrete; animation.duration = glyph.duration / NCSpeed;
@@ -342,7 +346,9 @@ static void NCStart(void) {
 - (void)setDate:(NSDate *)date;
 @end
 
-static BOOL NCStatusSubtitleVisible(UIView *clockView) {
+static char NCStatusReturnDeadlineKey, NCStatusReturnScheduledKey;
+
+static BOOL NCRawStatusSubtitleVisible(UIView *clockView) {
     Class subtitleClass =
         NSClassFromString(@"SBFLockScreenDateSubtitleView");
 
@@ -356,8 +362,10 @@ static BOOL NCStatusSubtitleVisible(UIView *clockView) {
         BOOL isDate =
             dateClass && [view isKindOfClass:dateClass];
 
-        if (isSubtitle && !isDate &&
-            !view.hidden && view.alpha > 0.01) {
+        CALayer *presentation = (CALayer *)view.layer.presentationLayer;
+        CGFloat visibleAlpha = presentation ? presentation.opacity : view.alpha;
+        if (isSubtitle && !isDate && !view.hidden &&
+            (view.alpha > 0.01 || visibleAlpha > 0.01)) {
             return YES;
         }
     }
@@ -365,9 +373,97 @@ static BOOL NCStatusSubtitleVisible(UIView *clockView) {
     return NO;
 }
 
+// The battery artwork can outlive its status subtitle during the final fade.
+// Keep a short settling interval after the last visible subtitle frame.
+static BOOL NCStatusSubtitleVisible(UIView *clockView) {
+    // The host's content fade starts before the charging subtitle is visible.
+    // Its target alpha is available synchronously, before Core Animation draws
+    // the battery. Do not wait for the subtitle's presentation layer to catch up.
+    NSNumber *contentAlpha = objc_getAssociatedObject(clockView, &NCContentAlphaKey);
+    BOOL systemHidingClock = contentAlpha && contentAlpha.doubleValue < 0.999;
+    if (systemHidingClock || NCRawStatusSubtitleVisible(clockView)) {
+        NSNumber *existingDeadline = objc_getAssociatedObject(clockView, &NCStatusReturnDeadlineKey);
+        CFTimeInterval deadline = MAX(existingDeadline.doubleValue, CACurrentMediaTime() + 0.25);
+        objc_setAssociatedObject(clockView, &NCStatusReturnDeadlineKey,
+            @(deadline), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        return YES;
+    }
+    NSNumber *deadline = objc_getAssociatedObject(clockView, &NCStatusReturnDeadlineKey);
+    NSTimeInterval remaining = deadline.doubleValue - CACurrentMediaTime();
+    if (!deadline || remaining <= 0) return NO;
+    // A layout pass is not guaranteed when this interval expires. Queue one
+    // independently of the display link, so an idle clock can return by itself.
+    NSNumber *scheduled = objc_getAssociatedObject(clockView, &NCStatusReturnScheduledKey);
+    if (![scheduled isEqualToNumber:deadline]) {
+        objc_setAssociatedObject(clockView, &NCStatusReturnScheduledKey, deadline,
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        __weak UIView *weakHost = clockView;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+            (int64_t)((remaining + 0.01) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            UIView *host = weakHost;
+            if (!host || ![objc_getAssociatedObject(host, &NCStatusReturnScheduledKey)
+                          isEqualToNumber:deadline]) return;
+            objc_setAssociatedObject(host, &NCStatusReturnScheduledKey, nil,
+                                     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            if (!host.window) return;
+            [UIView performWithoutAnimation:^{
+                [host setNeedsLayout];
+                [host layoutIfNeeded];
+            }];
+        });
+    }
+    return YES;
+}
+
+// Only the legacy layout places its date below the clock. Preserve the
+// system transform so size/offset changes never accumulate a date shift.
+static char NCDatePlacementKey;
+@interface NCDatePlacement : NSObject
+@property(nonatomic) CGAffineTransform original;
+@property(nonatomic) CGAffineTransform applied;
+@end
+@implementation NCDatePlacement
+@end
+
+static void NCRestoreDatePlacement(UIView *date) {
+    NCDatePlacement *placement = objc_getAssociatedObject(date, &NCDatePlacementKey);
+    if (placement && CGAffineTransformEqualToTransform(date.transform, placement.applied)) {
+        [UIView performWithoutAnimation:^{ date.transform = placement.original; }];
+    }
+    if (date) objc_setAssociatedObject(date, &NCDatePlacementKey, nil,
+                                      OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+static void NCPlaceLegacyDate(UIView *host, UIView *date, NCClockState *state) {
+    Class legacyDate = NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
+    if (!NCEnabled || NCHideDate || !legacyDate ||
+        ![date isKindOfClass:legacyDate] || !date.superview ||
+        date.hidden || !state.overlay || state.overlay.hidden) return;
+    // A model alpha of zero can still have visible presentation frames during
+    // a system fade. Keep the date below the digits throughout that fade.
+    CGRect digits = CGRectNull;
+    for (UIImageView *glyphView in state.views) {
+        if (glyphView.hidden || !glyphView.image) continue;
+        CGRect rect = [date.superview convertRect:glyphView.bounds fromView:glyphView];
+        digits = CGRectUnion(digits, rect);
+    }
+    if (CGRectIsNull(digits) || CGRectIsEmpty(digits)) return;
+    CGRect dateRect = [date.superview convertRect:date.bounds fromView:date];
+    CGFloat shift = MAX(0, CGRectGetMaxY(digits) + 8.0 - CGRectGetMinY(dateRect));
+    if (!isfinite(shift) || shift <= 0.01) return;
+    NCDatePlacement *placement = [NCDatePlacement new];
+    placement.original = date.transform;
+    CGAffineTransform transform = placement.original;
+    transform.ty += shift;
+    placement.applied = transform;
+    objc_setAssociatedObject(date, &NCDatePlacementKey, placement,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    [UIView performWithoutAnimation:^{ date.transform = transform; }];
+}
+
 static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NSDate *providedDate) {
     NCStart();
-     [NCViews addObject:self];
+    [NCViews addObject:self];
     NCUpdateSecondsTimer();
     NCClockState *state = objc_getAssociatedObject(self, &NCStateKey);
     if (!timeLabel || timeLabel.hidden) {
@@ -392,12 +488,26 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
         );
     }
 
-    dateLabel.alpha =
-    NCEnabled && (NCHideDate || NCStatusSubtitleVisible(self)) ? 0 : systemDateAlpha;
-    if (NCEnabled && NCStatusSubtitleVisible(self)) {
-        timeLabel.alpha = 0;
-        dateLabel.alpha = 0;
-        state.overlay.hidden = YES;
+    BOOL statusVisible = NCEnabled && NCStatusSubtitleVisible(self);
+    BOOL suppressDate = NCEnabled && (NCHideDate || statusVisible);
+    // Hide the date before restoring its custom position. Otherwise its
+    // presentation layer can show a frame at the system position during a fade.
+    if (suppressDate) {
+        [UIView performWithoutAnimation:^{
+            [dateLabel.layer removeAnimationForKey:@"opacity"];
+            dateLabel.alpha = 0;
+        }];
+    }
+    NCRestoreDatePlacement(dateLabel);
+    if (!suppressDate) dateLabel.alpha = systemDateAlpha;
+    if (statusVisible) {
+        [UIView performWithoutAnimation:^{
+            [timeLabel.layer removeAnimationForKey:@"opacity"];
+            [dateLabel.layer removeAnimationForKey:@"opacity"];
+            timeLabel.alpha = 0;
+            dateLabel.alpha = 0;
+            state.overlay.hidden = YES;
+        }];
         state.signature = nil;
         for (UIImageView *view in state.views) NCClearView(view);
         return;
@@ -421,7 +531,9 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
             NCGlyph *glyph = objc_getAssociatedObject(view, &NCGlyphKey);
             if (!view.hidden && glyph) NCSetGlyph(view, glyph, state.animated);
         }
-        timeLabel.alpha = 0; return;
+        timeLabel.alpha = 0;
+        NCPlaceLegacyDate(self, dateLabel, state);
+        return;
     }
     NSString *folder = NCFolder(wanted);
     NSMutableArray<NCGlyph *> *glyphs = [NSMutableArray array];
@@ -478,6 +590,7 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
         NCSetGlyph(view, glyphs[i], wanted); x += glyphWidth + NCSpacing;
     }
     timeLabel.alpha = 0; state.signature = signature; state.animated = wanted;
+    NCPlaceLegacyDate(self, dateLabel, state);
     NCUpdateSecondsTimer();
 }
 
@@ -491,7 +604,21 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
         if (timeClass && [view isKindOfClass:timeClass]) timeLabel = view;
         if (dateClass && [view isKindOfClass:dateClass]) dateLabel = view;
     }
+    // Allow the renderer to restore the system label if a pack cannot load.
+    if (timeLabel) objc_setAssociatedObject(timeLabel, &NCLegacyTimeSuppressionKey, nil,
+                                           OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     NCLayoutClock(self, timeLabel, dateLabel, self.date);
+    NCClockState *state = objc_getAssociatedObject(self, &NCStateKey);
+    BOOL replacingTime = NCEnabled &&
+        ((state.signature && !state.overlay.hidden) || NCStatusSubtitleVisible(self));
+    if (replacingTime && timeLabel) {
+        objc_setAssociatedObject(timeLabel, &NCLegacyTimeSuppressionKey, @YES,
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        [UIView performWithoutAnimation:^{
+            [timeLabel.layer removeAnimationForKey:@"opacity"];
+            timeLabel.alpha = 0;
+        }];
+    }
 }
 - (void)setDate:(NSDate *)date {
     %orig;
@@ -522,10 +649,58 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
 %group NCSystemClockVisibility
 %hook SBFLockScreenDateView
 - (void)setContentAlpha:(CGFloat)alpha withSubtitleVisible:(BOOL)subtitleVisible {
+    NSNumber *previousAlpha = objc_getAssociatedObject(self, &NCContentAlphaKey);
+    if (NCEnabled && previousAlpha && previousAlpha.doubleValue < 0.999 && alpha >= 0.999) {
+        // The model alpha reaches one at the START of the return crossfade.
+        // Wait for the enclosing UIKit/Core Animation duration before revealing
+        // our replacement. Do not mistake the target value for completion.
+        NSTimeInterval duration = UIView.inheritedAnimationDuration;
+        if (duration <= 0) duration = CATransaction.animationDuration;
+        if (!isfinite(duration) || duration < 0) duration = 0;
+        duration = MIN(duration, 3.0);
+        NSNumber *previousDeadline = objc_getAssociatedObject(self, &NCStatusReturnDeadlineKey);
+        CFTimeInterval deadline = MAX(previousDeadline.doubleValue,
+            CACurrentMediaTime() + MAX(duration, 0.25) + 0.05);
+        objc_setAssociatedObject(self, &NCStatusReturnDeadlineKey, @(deadline),
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
     objc_setAssociatedObject(self, &NCContentAlphaKey, @(alpha), OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    // Hide synchronously before %orig starts the system battery crossfade.
+    // Applying an alpha inside that transaction would fade our artwork over it.
+    if (NCEnabled && alpha < 0.999) {
+        NCClockState *clockState = objc_getAssociatedObject(self, &NCStateKey);
+        Class timeClass = NSClassFromString(@"SBUILegibilityLabel");
+        Class subtitleDateClass = NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
+        [UIView performWithoutAnimation:^{
+            [clockState.overlay.layer removeAnimationForKey:@"opacity"];
+            clockState.overlay.alpha = 0;
+            clockState.overlay.hidden = YES;
+            for (UIView *child in self.subviews) {
+                BOOL time = timeClass && [child isKindOfClass:timeClass];
+                BOOL date = subtitleDateClass && [child isKindOfClass:subtitleDateClass];
+                if (!time && !date) continue;
+                if (time) objc_setAssociatedObject(child, &NCLegacyTimeSuppressionKey,
+                    @YES, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                [child.layer removeAnimationForKey:@"opacity"];
+                child.alpha = 0;
+            }
+        }];
+        clockState.signature = nil;
+    }
+    Class dateClass = NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
+    BOOL hideDateForTransition = NCEnabled &&
+        (NCHideDate || !subtitleVisible || NCStatusSubtitleVisible(self));
+    if (hideDateForTransition) {
+        [UIView performWithoutAnimation:^{
+            for (UIView *view in self.subviews) {
+                if (dateClass && [view isKindOfClass:dateClass]) {
+                    [view.layer removeAnimationForKey:@"opacity"];
+                    view.alpha = 0;
+                }
+            }
+        }];
+    }
     %orig;
-    Class dateClass =
-        NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
 
     CGFloat systemDateAlpha = subtitleVisible ? alpha : 0;
 
@@ -538,8 +713,14 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
 
     for (UIView *view in self.subviews) {
         if (dateClass && [view isKindOfClass:dateClass]) {
-            view.alpha =
-                NCEnabled && (NCHideDate || NCStatusSubtitleVisible(self)) ? 0 : systemDateAlpha;
+            if (hideDateForTransition) {
+                [UIView performWithoutAnimation:^{
+                    [view.layer removeAnimationForKey:@"opacity"];
+                    view.alpha = 0;
+                }];
+            } else {
+                view.alpha = systemDateAlpha;
+            }
         }
     }
     NCClockState *state =
@@ -561,27 +742,203 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
 @interface SBFLockScreenDateSubtitleView : UIView
 @end
 
-static void NCSubtitleChanged(UIView *view) {
+// Scope this shared label class hook to a clock label claimed by our renderer.
+// Other legibility labels and missing-pack fallback retain system visibility.
+@interface SBUILegibilityLabel : UIView
+@end
+%group NCLegacyTimeVisibility
+%hook SBUILegibilityLabel
+- (void)setAlpha:(CGFloat)alpha {
+    Class clockClass = NSClassFromString(@"SBFLockScreenDateView");
+    if (NCEnabled && clockClass && [self.superview isKindOfClass:clockClass] &&
+        [objc_getAssociatedObject(self, &NCLegacyTimeSuppressionKey) boolValue]) {
+        alpha = 0;
+    }
+    %orig(alpha);
+}
+%end
+%end
+
+// A short-lived display link follows the actual subtitle fade. It never
+// polls while idle and never changes the system's status subtitle itself.
+static char NCStatusTransitionKey;
+@interface NCStatusTransition : NSObject
+@property(nonatomic, weak) UIView *host;
+@property(nonatomic, strong) CADisplayLink *link;
+@property(nonatomic) CFTimeInterval started;
+@property(nonatomic) BOOL updating;
+- (void)refresh;
+- (void)stop;
+@end
+
+static BOOL NCIsLegacyStatus(UIView *view) {
+    Class subtitle = NSClassFromString(@"SBFLockScreenDateSubtitleView");
+    Class date = NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
+    return subtitle && [view isKindOfClass:subtitle] &&
+        !(date && [view isKindOfClass:date]);
+}
+
+static UIView *NCLegacyStatusHost(UIView *view) {
+    Class clock = NSClassFromString(@"SBFLockScreenDateView");
+    for (UIView *parent = view.superview; parent; parent = parent.superview) {
+        if (clock && [parent isKindOfClass:clock]) return parent;
+    }
+    return nil;
+}
+
+static void NCHideLegacyClockImmediately(UIView *host) {
+    if (!NCEnabled || !host) return;
+    NCClockState *state = objc_getAssociatedObject(host, &NCStateKey);
+    Class timeClass = NSClassFromString(@"SBUILegibilityLabel");
     Class dateClass = NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
-    if (dateClass && [view isKindOfClass:dateClass]) return;
-    NCRefreshViews();
+    if (!objc_getAssociatedObject(host, &NCDateAlphaKey)) {
+        for (UIView *child in host.subviews) {
+            if (dateClass && [child isKindOfClass:dateClass]) {
+                objc_setAssociatedObject(host, &NCDateAlphaKey, @(child.alpha),
+                                         OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+                break;
+            }
+        }
+    }
+    [UIView performWithoutAnimation:^{
+        state.overlay.hidden = YES;
+        for (UIView *child in host.subviews) {
+            if ((timeClass && [child isKindOfClass:timeClass]) ||
+                (dateClass && [child isKindOfClass:dateClass])) {
+                [child.layer removeAnimationForKey:@"opacity"];
+                child.alpha = 0;
+            }
+        }
+    }];
+    state.signature = nil;
+}
+
+@implementation NCStatusTransition
+- (void)stop {
+    [self.link invalidate];
+    self.link = nil;
+}
+- (void)refresh {
+    if (self.updating) return;
+    UIView *host = self.host;
+    if (!host || !host.window || !NCEnabled) { [self stop]; return; }
+    self.updating = YES;
+    [UIView performWithoutAnimation:^{
+        [host setNeedsLayout];
+        [host layoutIfNeeded];
+    }];
+    self.updating = NO;
+}
+- (void)tick:(CADisplayLink *)sender {
+    [self refresh];
+    NSNumber *contentAlpha = objc_getAssociatedObject(self.host, &NCContentAlphaKey);
+    if (contentAlpha && contentAlpha.doubleValue < 0.999) {
+        [self stop];
+        return;
+    }
+    BOOL transitioning = NO;
+    for (UIView *child in self.host.subviews) {
+        if (!NCIsLegacyStatus(child) || child.hidden) continue;
+        CALayer *visible = (CALayer *)child.layer.presentationLayer;
+        if (visible && fabs(visible.opacity - child.alpha) > 0.01) {
+            transitioning = YES;
+            break;
+        }
+    }
+    // Resource bound only; the normal completion follows presentation opacity.
+    BOOL waitingForReturn = !NCRawStatusSubtitleVisible(self.host) &&
+        NCStatusSubtitleVisible(self.host);
+    if ((!transitioning && !waitingForReturn) || !self.host.window ||
+        CACurrentMediaTime() - self.started > 3.0) {
+        [self stop];
+    }
+}
+@end
+
+static void NCSubtitleChanged(UIView *view) {
+    if (!NCIsLegacyStatus(view)) return;
+    UIView *host = NCLegacyStatusHost(view);
+    if (!host) return;
+    NCStatusTransition *transition = objc_getAssociatedObject(host, &NCStatusTransitionKey);
+    if (!transition) {
+        transition = [NCStatusTransition new];
+        transition.host = host;
+        objc_setAssociatedObject(host, &NCStatusTransitionKey, transition,
+                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+    if (transition.updating) return;
+    [transition refresh];
+    if (NCEnabled && host.window && !transition.link) {
+        transition.started = CACurrentMediaTime();
+        transition.link = [CADisplayLink displayLinkWithTarget:transition selector:@selector(tick:)];
+        [transition.link addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
+    }
 }
 
 %group NCStatusSubtitleUpdates
 %hook SBFLockScreenDateSubtitleView
 - (void)setAlpha:(CGFloat)alpha {
     BOOL changed = self.alpha != alpha;
+    if (changed && alpha > 0.01 && !self.hidden && NCIsLegacyStatus(self)) {
+        NCHideLegacyClockImmediately(NCLegacyStatusHost(self));
+    }
     %orig;
     if (changed) NCSubtitleChanged(self);
 }
 - (void)setHidden:(BOOL)hidden {
     BOOL changed = self.hidden != hidden;
+    if (changed && !hidden && self.alpha > 0.01 && NCIsLegacyStatus(self)) {
+        NCHideLegacyClockImmediately(NCLegacyStatusHost(self));
+    }
     %orig;
     if (changed) NCSubtitleChanged(self);
+}
+- (void)willMoveToSuperview:(UIView *)newSuperview {
+    __weak UIView *oldHost = NCIsLegacyStatus(self) ? NCLegacyStatusHost(self) : nil;
+    %orig;
+    if (oldHost && newSuperview != self.superview) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UIView *host = oldHost;
+            if (!host || !host.window) return;
+            [UIView performWithoutAnimation:^{
+                [host setNeedsLayout];
+                [host layoutIfNeeded];
+            }];
+        });
+    }
 }
 - (void)didMoveToSuperview {
     %orig;
     NCSubtitleChanged(self);
+}
+%end
+%end
+
+
+// The system can animate the date directly after the host's layout pass.
+// Enforce hiding on that specific view, before UIKit creates its fade animation.
+@interface SBFLockScreenDateSubtitleDateView : UIView
+@end
+
+static BOOL NCShouldSuppressLegacyDate(UIView *view) {
+    UIView *host = NCLegacyStatusHost(view);
+    return host && NCEnabled && (NCHideDate || NCStatusSubtitleVisible(host));
+}
+
+%group NCLegacyDateVisibility
+%hook SBFLockScreenDateSubtitleDateView
+- (void)setAlpha:(CGFloat)alpha {
+    if (NCShouldSuppressLegacyDate(self)) alpha = 0;
+    %orig(alpha);
+}
+- (void)layoutSubviews {
+    %orig;
+    if (NCShouldSuppressLegacyDate(self)) {
+        [UIView performWithoutAnimation:^{
+            [self.layer removeAnimationForKey:@"opacity"];
+            self.alpha = 0;
+        }];
+    }
 }
 %end
 %end
@@ -601,12 +958,14 @@ static void NCCompatibilitySnapshot(UIView *host) {
     static BOOL captured = NO;
     if (captured) return;
     captured = YES;
-    NSMutableString *report = [NSMutableString stringWithFormat:@"NextClock 1.1.0~beta3 (experimental)\niOS: %@\n", UIDevice.currentDevice.systemVersion];
+    NSMutableString *report = [NSMutableString stringWithFormat:@"NextClock %@\niOS: %@\n", NC_VERSION, UIDevice.currentDevice.systemVersion];
     NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:host];
     for (NSUInteger i = 0; i < queue.count && i < 120; i++) {
         UIView *view = queue[i];
         [report appendFormat:@"%@ frame=%@ alpha=%.2f hidden=%d\n", NSStringFromClass(view.class), NSStringFromCGRect(view.frame), view.alpha, view.hidden];
-        if (queue.count < 120) [queue addObjectsFromArray:view.subviews];
+        NSUInteger remaining = 120 - queue.count;
+        if (remaining) [queue addObjectsFromArray:[view.subviews subarrayWithRange:
+            NSMakeRange(0, MIN(remaining, view.subviews.count))]];
     }
     NSString *snapshot = report.copy;
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
@@ -762,8 +1121,8 @@ static void NCCompatibilitySnapshot(UIView *host) {
         BOOL legacy = legacyClass && class_getInstanceMethod(legacyClass, @selector(date)) &&
             class_getInstanceMethod(legacyClass, @selector(setDate:));
         NSMutableString *startupReport = [NSMutableString stringWithFormat:
-            @"NextClock 1.1.0~beta3 (experimental)\niOS: %@\nAdapter: %@\n",
-            UIDevice.currentDevice.systemVersion, modern ? @"prominent (untested)" : (legacy ? @"legacy" : @"none; required classes unavailable")];
+            @"NextClock %@\niOS: %@\nAdapter: %@\n",
+            NC_VERSION, UIDevice.currentDevice.systemVersion, modern ? @"prominent (experimental)" : (legacy ? @"legacy" : @"none; required classes unavailable")];
         for (NSString *name in @[@"SBFLockScreenDateView", @"CSProminentDisplayView", @"CSProminentTimeView", @"CSProminentSubtitleDateView"]) {
             [startupReport appendFormat:@"%@: %@\n", name, NSClassFromString(name) ? @"present" : @"absent"];
         }
@@ -821,6 +1180,16 @@ static void NCCompatibilitySnapshot(UIView *host) {
         }
         if (!modern && legacy && NSClassFromString(@"SBFLockScreenDateSubtitleView")) {
             %init(NCStatusSubtitleUpdates);
+        }
+        Class legacyTimeClass = NSClassFromString(@"SBUILegibilityLabel");
+        if (!modern && legacy && legacyTimeClass &&
+            [legacyTimeClass isSubclassOfClass:UIView.class]) {
+            %init(NCLegacyTimeVisibility);
+        }
+        Class legacyDateClass = NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
+        if (!modern && legacy && legacyDateClass &&
+            [legacyDateClass isSubclassOfClass:UIView.class]) {
+            %init(NCLegacyDateVisibility);
         }
         Class dateClass = NSClassFromString(@"SBFLockScreenDateView");
         SEL selector = @selector(setContentAlpha:withSubtitleVisible:);

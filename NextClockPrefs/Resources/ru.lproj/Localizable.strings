@@ -6,7 +6,7 @@
 "Animation" = "Анимация";
 "Animated" = "Анимированные";
 "Static" = "Статичные";
-"Still in Low Power Mode" = "Без анимации при энергосбережении";
+"Still in Low Power Mode" = "Статика в энергосбережении";
 "ANIMATION SPEED" = "СКОРОСТЬ АНИМАЦИИ";
 "DIGIT SIZE" = "РАЗМЕР ЦИФР";
 "SPACING" = "РАССТОЯНИЕ МЕЖДУ ЦИФРАМИ";
@@ -39,7 +39,6 @@
 "Anime" = "Anime";
 "Custom lock screen clocks for iOS 15 with static and animated digit packs." = "Часы на экране блокировки iOS 15 со статичными и анимированными наборами цифр.";
 "Developer: RAtnik00" = "Разработчик: RAtnik00";
-"Version: 1.0.1" = "Версия: 1.0.1";
 "Version: %@" = "Версия: %@";
 "Author: %@" = "Автор: %@";
 "User pack" = "Пользовательский набор";
@@ -77,7 +76,10 @@
 // 1.1.0 beta testing
 "BETA TESTING" = "БЕТА-ТЕСТИРОВАНИЕ";
 "Export diagnostics" = "Экспорт диагностики";
-"Beta: iOS 16–17 support is experimental and has not been verified on a device. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Бета: поддержка iOS 16–17 экспериментальная и ещё не проверена на устройстве. iOS 15 поддерживается. Сообщите модель, точную версию iOS и jailbreak.";
-"Version: 1.1.0~beta3" = "Версия: 1.1.0~beta3";
+"iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Поддержка iOS 16–17 экспериментальная и проверена на ограниченном числе устройств. iOS 15 поддерживается. Сообщайте модель, точную версию iOS и jailbreak.";
 "Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta." = "Часы экрана блокировки. iOS 15 поддерживается; iOS 16–17 — экспериментальная бета.";
 "No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." = "Отчёта пока нет. Перезапустите SpringBoard, заблокируйте и включите экран, затем повторите.";
+
+// Halloween edition
+"🎃 Happy Halloween!" = "🎃 Всех с Хэллоуином!";
+"Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Попробуйте анимированные часы Halloween. Выберите Halloween в пункте «Набор».";

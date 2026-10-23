@@ -39,7 +39,6 @@
 "Anime" = "Anime";
 "Custom lock screen clocks for iOS 15 with static and animated digit packs." = "Własne zegary ekranu blokady dla iOS 15 ze statycznymi i animowanymi pakietami cyfr.";
 "Developer: RAtnik00" = "Deweloper: RAtnik00";
-"Version: 1.0.1" = "Wersja: 1.0.1";
 "Version: %@" = "Wersja: %@";
 "Author: %@" = "Autor: %@";
 "User pack" = "Zaimportowany pakiet";
@@ -75,7 +74,10 @@
 "Show seconds" = "Pokaż sekundy";
 "BETA TESTING" = "TESTY BETA";
 "Export diagnostics" = "Eksportuj diagnostykę";
-"Beta: iOS 16–17 support is experimental and has not been verified on a device. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Beta: Obsługa iOS 16–17 jest eksperymentalna i nie została jeszcze zweryfikowana na urządzeniu. iOS 15 pozostaje obsługiwany. Podaj model urządzenia, dokładną wersję iOS i jailbreak.";
-"Version: 1.1.0~beta3" = "Wersja: 1.1.0~beta3";
+"iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Obsługa iOS 16–17 jest eksperymentalna i została przetestowana na niewielu urządzeniach. iOS 15 jest nadal obsługiwany. Podaj model, dokładną wersję iOS i jailbreak.";
 "Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta." = "Własne zegary ekranu blokady. Obsługa iOS 15; eksperymentalna wersja beta dla iOS 16–17.";
 "No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." = "Brak raportu diagnostycznego. Uruchom ponownie SpringBoard, zablokuj urządzenie, wybudź ekran i spróbuj ponownie.";
+
+// Halloween edition
+"🎃 Happy Halloween!" = "🎃 Wesołego Halloween!";
+"Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Wypróbuj animowany pakiet Halloween. Wybierz Halloween w pozycji „Pakiet”.";

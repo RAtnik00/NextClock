@@ -17,9 +17,11 @@
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>1.1.0b3</string>
+	<string>1.1.0</string>
 	<key>NSPrincipalClass</key>
 	<string>NCRootListControllerRootListController</string>
+	<key>NextClockVersion</key>
+	<string>1.1.0</string>
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>en</string>
@@ -29,6 +31,8 @@
 		<string>pl</string>
 		<string>sv</string>
 		<string>nb</string>
+		<string>it</string>
+		<string>fr</string>
 	</array>
 </dict>
 </plist>

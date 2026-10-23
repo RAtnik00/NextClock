@@ -18,33 +18,18 @@ Confirmed working:
 
 The optional seconds display has been tested on iPhone 7 Plus; it has not yet been separately verified on iPhone 12 or iPhone 13 Pro Max. Other devices and iOS 15 versions require testing.
 
-## 1.1.0~beta3 — public testing
+## 1.1.0 — October 23, 2026
 
-- Added German, Polish, Swedish and Norwegian Bokmål preferences (80 strings per language), selected from the phone's preferred languages. English remains the fallback.
-- Added an experimental wake-up flicker fix: detached clock views retain a static digit frame while animation data is released, and attached/awake clocks request an immediate layout without animation.
-- Includes the adapter, charging/status and wallpaper/music-transition changes from beta 2.
+Includes the iOS 15 charging transition fixes, transparent animated Halloween pack, a greeting at the top of settings, and Italian/French localization. See [CHANGELOG.md](CHANGELOG.md) for details and remaining validation.
 
-The wake-up change builds for arm64/arm64e but has not yet been confirmed on a tester's device. Please test repeated screen wake/sleep, minute and seconds updates, bundled/custom packs, charging, wallpaper/music transitions and disabling NextClock. Translations still need native-speaker and device-layout review. Report the installed package version with each issue.
+Tester videos confirm charging returns correctly with Anime and a visible date on iOS 15.8.8. RAtnik00 subsequently reported that the final RC1 device checks passed on the development iPhone 7 Plus. The iOS 16/17 adapter remains experimental; these iOS 15 charging changes do not establish modern-adapter compatibility.
 
-## 1.1.0~beta2 — public testing
+Tester reports: iPhone X, iOS 16.1.2, Roothide 2.4.9.27 (adapter, seconds and date hiding); iPhone 14, iOS 16.6, nathanLR (beta 2 working). Earlier reports also describe custom packs on iPhone SE 2020 / iOS 17.0.2 and iPad 8 / iPadOS 17.4; exact build/jailbreak details are incomplete. These are limited reports, not universal compatibility claims.
 
-- Fixed adapter selection when `setDisplayDate:` exists without a `displayDate` getter; the date is now captured from the setter.
-- Added guarded subtitle-update hooks and transient-subtitle detection to address charging/status overlap.
-- Added per-instance stock-time alpha suppression while NextClock replaces the clock, targeting wallpaper and music-artwork transitions.
-- Expanded startup diagnostics with selector availability and method names.
-
-The adapter-selection fix was confirmed by a tester on iPhone X, iOS 16.1.2, Roothide 2.4.9.27; seconds and date hiding also worked. The newest charging and transition changes are not yet device-verified. Test wallpaper switching, first lock, music-artwork expansion, charging, and disabling NextClock to restore the stock clock. Earlier beta reports also describe working clocks/custom packs on iOS 17.0.2 (iPhone SE 2020) and iPadOS 17.4 (iPad 8); jailbreak/build details have not all been independently confirmed.
-
-## 1.1.0~beta1 — public testing
-
-This beta preserves the legacy iOS 15 renderer and adds a runtime-selected prominent-clock adapter for testing on iOS 16–17. Private selectors are based on an upstream iOS 18 class dump; their presence and correct behavior on 16/17 are not established. If required methods are missing, the legacy adapter is used and the stock clock may remain unchanged. A successful build is not device validation. Jailbreak and tweak injection are required; TrollStore alone is insufficient.
-
-Settings → NextClock → Export diagnostics shares a structural report (iOS version, adapter/class availability and, when available, view frames/visibility). It does not capture label text, notifications or device identifiers and is not uploaded automatically. Send it with model, exact firmware/build, jailbreak, steps and a screenshot/video. Check charging status, lock/unlock, saved lock-screen styles, widgets, seconds, Low Power Mode and AOD on supported devices. Keep the stable 1.0.1 package available for rollback.
-
-Circuit 1.2 is bundled with transparent APNG light effects and static fallbacks. Earlier visual drafts remain under Assets/PackDrafts and are not installed.
+Settings → NextClock → Export diagnostics shares a structural report (version, iOS, adapter/class availability and a bounded view snapshot). It excludes label text, notifications and device identifiers and is not uploaded automatically. Include model, exact iOS, jailbreak, package version and reproduction steps with a report. Keep stable 1.0.1 available for rollback.
 
 ## Features
-PNG/GIF/APNG; static and animated modes; exact frame delays; shared animation timeline; speed; still images in Low Power Mode; tint preserving shading; 12/24/system time; optional seconds display; hide date; size, spacing, offset; live preferences; pack details, import, selection, deletion; reset and respring. Automatic English, Russian, Ukrainian, German, Polish, Swedish and Norwegian Bokmål preferences localization (English fallback). Clock and date yield to temporary system status text, including charging.
+PNG/GIF/APNG; static and animated modes; exact frame delays; shared animation timeline; speed; still images in Low Power Mode; tint preserving shading; 12/24/system time; optional seconds display; hide date; size, spacing, offset; live preferences; pack details, import, selection, deletion; reset and respring. Automatic English, Russian, Ukrainian, German, Polish, Swedish, Norwegian Bokmål, Italian and French preferences localization (English fallback). Clock and date yield to temporary system status text, including charging.
 
 ## Packs
 A folder contains optional Info.plist and static/, animated/, or both. Each variant contains all 11 glyphs (0–9 and colon) as GIF or PNG. APNG uses .png. Metadata: Name, Version, Author, optional FormatVersion = 1. Existing .flexpack folders work. ZIP and .nextclock files are ordinary ZIP archives containing a pack directly or in one enclosing folder. Each import creates a separate copy and preserves existing packs.
@@ -54,7 +39,7 @@ Bundled packs: /var/jb/Library/Application Support/NextClock/Packs. Imported pac
 Image limits: 2048 px per dimension, 240 frames, 8 MB encoded and 96 MB decoded per glyph. Rendering also limits decoded glyph frames to 48 MB per clock row; a row exceeding this budget falls back to the system clock. ZIP limits: 64 MB compressed/expanded, 512 entries. Stored and deflated ZIP entries supported; encryption, ZIP64 and symlinks rejected.
 
 ## Build
-Theos, Xcode, patched iOS 16.5 SDK. Run `make package FINALPACKAGE=1`. arm64 and arm64e, rootless, deployment iOS 15. The rootless package architecture remains `iphoneos-arm64`. PreferenceLoader required.
+Theos, Xcode, patched iOS 16.5 SDK. Run the checks in [Tests/README.md](Tests/README.md), then `make package FINALPACKAGE=1`. arm64 and arm64e, rootless, deployment iOS 15. The rootless package architecture remains `iphoneos-arm64`. PreferenceLoader required.
 
 ## Acknowledgements
 NextClock is independently implemented, inspired by AniTime by yandevelop and FlexClock by tr3tol. The legacy adapter targets iOS 15 classes. The experimental prominent-clock adapter consults FlexClock private-interface names; compiler-specific C/runtime workarounds are not included.
@@ -65,10 +50,17 @@ Anime artwork is from AniTime; Pixel, CRT and Sakura artwork is from the supplie
 Staged imports and confirmations preserve existing packs; every glyph is validated; reset clears all implemented preferences. iOS 15 clocks are bounded to screen width. Exact frame delays improve on uniform reference playback. About names NextClock and RAtnik00; acknowledgements are in this README.
 
 ## Device verification
-Build success does not confirm runtime compatibility. Test modes, speed, low-power, tint, minute changes, screen off/on, folder/ZIP import, deletion, fallback and reset on the iPhone.
+Local release checks passed on the development device, alongside native pack/ZIP and resource tests. Other devices still need validation, especially iOS 16/17 wallpaper, music and charging transitions. Report model, exact iOS, jailbreak and installed version with any issue.
+
+## Roadmap
+An iOS 13–14 port is planned as a separate update. Version 1.1.0 requires iOS 15 or newer; it does not include that port.
 
 ## License
-NextClock source is provided under GPL-3.0. The settings layout is adapted from FlexClock (tr3tol, GPL-3.0); its attribution is retained here. This source license does not grant rights to third-party artwork.
+NextClock source is provided under GPL-3.0. The settings layout is adapted from FlexClock (tr3tol, GPL-3.0); its attribution is retained here. Halloween artwork was generated with the built-in image generation tool and animated with the accompanying pack builder. This source license does not grant rights to third-party artwork.
 
 ## Support
 NextClock is free. Optional support: [buycoffee.to/ratnik00](https://buycoffee.to/ratnik00). Supporting the developer does not unlock extra features.
+
+### Halloween pack
+
+Animated pumpkin digits with flickering warm light and gentle motion; 24 APNG frames per glyph, transparent background, and a static option. Select Halloween in preferences. A localized Halloween greeting appears at the top of the settings page.

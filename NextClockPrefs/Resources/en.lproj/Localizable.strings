@@ -39,7 +39,6 @@
 "Anime" = "Anime";
 "Custom lock screen clocks for iOS 15 with static and animated digit packs." = "Custom lock screen clocks for iOS 15 with static and animated digit packs.";
 "Developer: RAtnik00" = "Developer: RAtnik00";
-"Version: 1.0.1" = "Version: 1.0.1";
 "Version: %@" = "Version: %@";
 "Author: %@" = "Author: %@";
 "User pack" = "User pack";
@@ -77,7 +76,10 @@
 // 1.1.0 beta testing
 "BETA TESTING" = "BETA TESTING";
 "Export diagnostics" = "Export diagnostics";
-"Beta: iOS 16–17 support is experimental and has not been verified on a device. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Beta: iOS 16–17 support is experimental and has not been verified on a device. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak.";
-"Version: 1.1.0~beta3" = "Version: 1.1.0~beta3";
+"iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak.";
 "Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta." = "Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta.";
 "No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." = "No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again.";
+
+// Halloween edition
+"🎃 Happy Halloween!" = "🎃 Happy Halloween!";
+"Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Celebrate with the animated Halloween pack. Select Halloween under Pack.";

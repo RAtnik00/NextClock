@@ -24,7 +24,9 @@
 			<key>cell</key>
 			<string>PSStaticTextCell</string>
 			<key>label</key>
-			<string>Version: 1.1.0~beta3</string>
+			<string>Version: %@</string>
+			<key>nextClockVersion</key>
+			<true/>
 		</dict>
 	</array>
 </dict>

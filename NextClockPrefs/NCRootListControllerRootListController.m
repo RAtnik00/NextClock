@@ -5,6 +5,7 @@
 #import "../Shared/NCPacks.h"
 #import "../Shared/NCZip.h"
 #import "NCLocalization.h"
+#import "../Shared/NCVersion.h"
 
 static NSString *NCText(NSString *key) {
     return NCLocalizedString([NSBundle bundleForClass:NCRootListControllerRootListController.class], key);
@@ -29,7 +30,9 @@ static NSString *NCText(NSString *key) {
         [bundle pathForResource:name ofType:@"plist"]];
     self.title = NCText(source[@"title"] ?: @"NextClock");
     for (PSSpecifier *row in items) {
-        if (row.name.length) row.name = NCText(row.name);
+        if ([[row propertyForKey:@"nextClockVersion"] boolValue])
+            row.name = [NSString stringWithFormat:NCText(@"Version: %@"), NC_VERSION];
+        else if (row.name.length) row.name = NCText(row.name);
         NSString *footer = [row propertyForKey:@"footerText"];
         if (footer.length) [row setProperty:NCText(footer) forKey:@"footerText"];
         NSString *key = [row propertyForKey:@"key"];
@@ -141,9 +144,11 @@ static NSString *NCText(NSString *key) {
     [self presentViewController:alert animated:YES completion:nil];
 }
 - (void)importPack {
-    if (self.importing) return;
+    if (self.importing || self.presentedViewController) return;
     UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc]
-        initForOpeningContentTypes:@[UTTypeFolder,UTTypeData] asCopy:NO];
+        // Some file providers give .nextclock an unregistered UTI unrelated to Data.
+        // Accept any item here; the bounded importer still validates its contents.
+        initForOpeningContentTypes:@[UTTypeFolder,UTTypeItem] asCopy:NO];
     picker.delegate=self; picker.allowsMultipleSelection=NO;
     [self presentViewController:picker animated:YES completion:nil];
 }
