@@ -8,6 +8,7 @@
 #import <math.h>
 #import "Shared/NCPacks.h"
 #import "Shared/NCVersion.h"
+#import "Shared/NCLayoutSafety.h"
 #import <notify.h>
 
 // iOS 15 plus an experimental runtime-selected iOS 16/17 adapter. All rendering and settings changes run on the main thread.
@@ -214,6 +215,21 @@ static void NCRefreshViews(void) {
     for (UIView *view in NCViews.allObjects) {
         [view setNeedsLayout];
     }
+}
+
+static char NCLayoutInProgressKey, NCLayoutQueuedKey;
+// Coalesce callbacks from system setters/window attachment. UIKit can call these
+// while the containing clock is already laying out its own children.
+static void NCRequestClockLayout(UIView *host) {
+    if (!host || [objc_getAssociatedObject(host,&NCLayoutQueuedKey) boolValue]) return;
+    objc_setAssociatedObject(host,&NCLayoutQueuedKey,@YES,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    __weak UIView *weakHost=host;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIView *view=weakHost; if (!view) return;
+        objc_setAssociatedObject(view,&NCLayoutQueuedKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        if (!view.window) return;
+        [UIView performWithoutAnimation:^{ [view setNeedsLayout]; [view layoutIfNeeded]; }];
+    });
 }
 
 static BOOL NCHasVisibleClock(void) {
@@ -597,6 +613,7 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
 %group NCLegacyClock
 %hook SBFLockScreenDateView
 - (void)layoutSubviews {
+    NCPerformGuarded(self,&NCLayoutInProgressKey, ^{
     %orig;
     UIView *timeLabel = nil, *dateLabel = nil;
     Class timeClass = NSClassFromString(@"SBUILegibilityLabel"), dateClass = NSClassFromString(@"SBFLockScreenDateSubtitleDateView");
@@ -619,6 +636,8 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
             timeLabel.alpha = 0;
         }];
     }
+
+    });
 }
 - (void)setDate:(NSDate *)date {
     %orig;
@@ -634,10 +653,7 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
             for (UIImageView *view in state.views) NCFreezeView(view);
             state.signature = nil;
         } else {
-            [UIView performWithoutAnimation:^{
-                [self setNeedsLayout];
-                [self layoutIfNeeded];
-            }];
+            NCRequestClockLayout(self);
         }
 
         NCUpdateSecondsTimer();
@@ -823,10 +839,7 @@ static void NCHideLegacyClockImmediately(UIView *host) {
     UIView *host = self.host;
     if (!host || !host.window || !NCEnabled) { [self stop]; return; }
     self.updating = YES;
-    [UIView performWithoutAnimation:^{
-        [host setNeedsLayout];
-        [host layoutIfNeeded];
-    }];
+    NCRequestClockLayout(host);
     self.updating = NO;
 }
 - (void)tick:(CADisplayLink *)sender {
@@ -975,6 +988,7 @@ static void NCCompatibilitySnapshot(UIView *host) {
 %group NCModernClock
 %hook CSProminentDisplayView
 - (void)layoutSubviews {
+    NCPerformGuarded(self,&NCLayoutInProgressKey, ^{
     // Allow the renderer to restore stock content on every fallback path.
     UIView *previousTime = self.timeView;
     if ([previousTime isKindOfClass:UIView.class]) {
@@ -1044,6 +1058,8 @@ static void NCCompatibilitySnapshot(UIView *host) {
                              replacingTime ? @YES : nil,
                              OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     if (replacingTime) time.alpha = 0;
+
+    });
 }
 - (void)setDisplayDate:(NSDate *)date {
     objc_setAssociatedObject(
@@ -1114,12 +1130,12 @@ static void NCCompatibilitySnapshot(UIView *host) {
     @autoreleasepool {
         Class modernClass = NSClassFromString(@"CSProminentDisplayView");
         BOOL modern = UIDevice.currentDevice.systemVersion.doubleValue >= 16 && modernClass &&
-            class_getInstanceMethod(modernClass, @selector(timeView)) &&
-            class_getInstanceMethod(modernClass, @selector(subtitleView)) &&
-            class_getInstanceMethod(modernClass, @selector(setDisplayDate:));
+            NCMethodHasABI(modernClass, @selector(timeView), "@", @[]) &&
+            NCMethodHasABI(modernClass, @selector(subtitleView), "@", @[]) &&
+            NCMethodHasABI(modernClass, @selector(setDisplayDate:), "v", @[@"@"]);
         Class legacyClass = NSClassFromString(@"SBFLockScreenDateView");
-        BOOL legacy = legacyClass && class_getInstanceMethod(legacyClass, @selector(date)) &&
-            class_getInstanceMethod(legacyClass, @selector(setDate:));
+        BOOL legacy = legacyClass && NCMethodHasABI(legacyClass, @selector(date), "@", @[]) &&
+            NCMethodHasABI(legacyClass, @selector(setDate:), "v", @[@"@"]);
         NSMutableString *startupReport = [NSMutableString stringWithFormat:
             @"NextClock %@\niOS: %@\nAdapter: %@\n",
             NC_VERSION, UIDevice.currentDevice.systemVersion, modern ? @"prominent (experimental)" : (legacy ? @"legacy" : @"none; required classes unavailable")];
@@ -1156,6 +1172,8 @@ static void NCCompatibilitySnapshot(UIView *host) {
 
             free(methods);
         }
+        [startupReport appendFormat:@"\nVisibility method ABI compatible: %@\nLayout safety: guarded; subtitle/window callbacks coalesced\n",
+            NCMethodHasABI(legacyClass,@selector(setContentAlpha:withSubtitleVisible:),"v",@[@(@encode(CGFloat)),@"BOOL"]) ? @"yes" : @"no; hook skipped"];
         [startupReport writeToFile:@"/var/mobile/Library/NextClock-compatibility.txt"
             atomically:YES encoding:NSUTF8StringEncoding error:nil];
         if (modern) {
@@ -1167,8 +1185,8 @@ static void NCCompatibilitySnapshot(UIView *host) {
                 %init(NCModernTimeVisibility);
             }
             BOOL subtitleUpdatesAvailable =
-                class_getInstanceMethod(modernClass, @selector(setSubtitleAlpha:)) &&
-                class_getInstanceMethod(modernClass, @selector(setTransientSubtitleView:));
+                NCMethodHasABI(modernClass, @selector(setSubtitleAlpha:), "v", @[@(@encode(CGFloat))]) &&
+                NCMethodHasABI(modernClass, @selector(setTransientSubtitleView:), "v", @[@"@"]);
             if (subtitleUpdatesAvailable) {
                 %init(NCModernSubtitleUpdates);
             }
@@ -1178,7 +1196,12 @@ static void NCCompatibilitySnapshot(UIView *host) {
         } else {
             NSLog(@"[NextClock] No compatible clock adapter; keeping system clock");
         }
-        if (!modern && legacy && NSClassFromString(@"SBFLockScreenDateSubtitleView")) {
+        Class statusClass=NSClassFromString(@"SBFLockScreenDateSubtitleView");
+        if (!modern && legacy && statusClass && [statusClass isSubclassOfClass:UIView.class] &&
+            class_getInstanceMethod(statusClass,@selector(setAlpha:)) &&
+            class_getInstanceMethod(statusClass,@selector(setHidden:)) &&
+            class_getInstanceMethod(statusClass,@selector(willMoveToSuperview:)) &&
+            class_getInstanceMethod(statusClass,@selector(didMoveToSuperview))) {
             %init(NCStatusSubtitleUpdates);
         }
         Class legacyTimeClass = NSClassFromString(@"SBUILegibilityLabel");
@@ -1193,7 +1216,7 @@ static void NCCompatibilitySnapshot(UIView *host) {
         }
         Class dateClass = NSClassFromString(@"SBFLockScreenDateView");
         SEL selector = @selector(setContentAlpha:withSubtitleVisible:);
-        if (!modern && legacy && class_getInstanceMethod(dateClass, selector)) {
+        if (!modern && legacy && NCMethodHasABI(dateClass, selector, "v", @[@(@encode(CGFloat)),@"BOOL"])) {
             %init(NCSystemClockVisibility);
         } else {
             NSLog(@"[NextClock] System clock visibility method unavailable on this iOS version");

@@ -18,6 +18,10 @@ Confirmed working:
 
 The optional seconds display has been tested on iPhone 7 Plus; it has not yet been separately verified on iPhone 12 or iPhone 13 Pro Max. Other devices and iOS 15 versions require testing.
 
+## 1.1.1 — Stable source release
+
+Includes the reentrant-layout guard and private-method signature checks added after 1.1.0. See [SOURCE-1.1.1.md](SOURCE-1.1.1.md) for source provenance, binary comparison and build information.
+
 ## 1.1.0 — October 23, 2026
 
 Includes the iOS 15 charging transition fixes, transparent animated Halloween pack, a greeting at the top of settings, and Italian/French localization. See [CHANGELOG.md](CHANGELOG.md) for details and remaining validation.
@@ -42,9 +46,15 @@ Image limits: 2048 px per dimension, 240 frames, 8 MB encoded and 96 MB decoded 
 Theos, Xcode, patched iOS 16.5 SDK. Run the checks in [Tests/README.md](Tests/README.md), then `make package FINALPACKAGE=1`. arm64 and arm64e, rootless, deployment iOS 15. The rootless package architecture remains `iphoneos-arm64`. PreferenceLoader required.
 
 ## Acknowledgements
-NextClock is independently implemented, inspired by AniTime by yandevelop and FlexClock by tr3tol. The legacy adapter targets iOS 15 classes. The experimental prominent-clock adapter consults FlexClock private-interface names; compiler-specific C/runtime workarounds are not included.
+NextClock includes adaptations from [FlexClock](https://github.com/tr3tol/FlexClock)
+by [tr3tol](https://github.com/tr3tol), including its settings layout and pack
+conventions. The FlexClock private interfaces informed the modern adapter.
+Thank you to tr3tol for the original project.
 
-Anime artwork is from AniTime; Pixel, CRT and Sakura artwork is from the supplied FlexClock reference. These are third-party assets, not original NextClock artwork. They are included with the creators’ permission, obtained by RAtnik00. AniTime source code is not included.
+The original clock concept and Anime artwork are credited to
+[AniTime](https://github.com/yandevelop/AniTime) by yandevelop.
+Pixel, CRT and Sakura artwork came from the FlexClock reference. Artwork rights
+are separate from the source-code license; see [CREDITS.md](CREDITS.md).
 
 ## Adaptations
 Staged imports and confirmations preserve existing packs; every glyph is validated; reset clears all implemented preferences. iOS 15 clocks are bounded to screen width. Exact frame delays improve on uniform reference playback. About names NextClock and RAtnik00; acknowledgements are in this README.
@@ -56,6 +66,7 @@ Local release checks passed on the development device, alongside native pack/ZIP
 An iOS 13–14 port is planned as a separate update. Version 1.1.0 requires iOS 15 or newer; it does not include that port.
 
 ## License
+See [LICENSE](LICENSE) for GPLv3 and [CREDITS.md](CREDITS.md) for upstream attribution.
 NextClock source is provided under GPL-3.0. The settings layout is adapted from FlexClock (tr3tol, GPL-3.0); its attribution is retained here. Halloween artwork was generated with the built-in image generation tool and animated with the accompanying pack builder. This source license does not grant rights to third-party artwork.
 
 ## Support
