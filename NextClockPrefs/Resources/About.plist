@@ -28,6 +28,20 @@
 			<key>nextClockVersion</key>
 			<true/>
 		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>NextClock is free. Support is completely optional and does not unlock extra features.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Support the developer</string>
+			<key>action</key>
+			<string>supportDeveloper</string>
+		</dict>
 	</array>
 </dict>
 </plist>

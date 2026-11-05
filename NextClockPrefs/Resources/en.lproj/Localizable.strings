@@ -83,3 +83,69 @@
 // Halloween edition
 "🎃 Happy Halloween!" = "🎃 Happy Halloween!";
 "Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Celebrate with the animated Halloween pack. Select Halloween under Pack.";
+
+"Experimental rootful build for iOS 12–14. Device testing required." = "Experimental rootful build for iOS 12–14. Device testing required.";
+
+"Preview & Profiles" = "Preview & Profiles";
+
+"Preview" = "Preview";
+
+"Favorites" = "Favorites";
+
+"Double-tap to switch" = "Double-tap to switch";
+
+"Choose at least two packs. Double-tap the clock digits to switch. Long-press remains available for wallpaper editing." = "Choose at least two packs. Double-tap the clock digits to switch. Long-press remains available for wallpaper editing.";
+
+"Stable releases / Downgrade" = "Stable releases / Downgrade";
+
+"Draft only. Apply sends these settings to the Lock Screen." = "Draft only. Apply sends these settings to the Lock Screen.";
+
+"Apply" = "Apply";
+
+"Applied" = "Applied";
+
+"Appearance applied. The enabled switch was not changed." = "Appearance applied. The enabled switch was not changed.";
+
+"Missing pack. Install it or choose another pack." = "Missing pack. Install it or choose another pack.";
+
+"Preview unavailable. Try a static pack." = "Preview unavailable. Try a static pack.";
+
+"Could not save settings." = "Could not save settings.";
+
+"Error" = "Error";
+
+"Configure clock" = "Configure clock";
+
+"Advanced" = "Advanced";
+
+"About & Support" = "About & Support";
+
+"Appearance" = "Appearance";
+
+"Layout" = "Layout";
+
+"The Lock Screen will restart. Your settings will be kept." = "The Lock Screen will restart. Your settings will be kept.";
+
+"Date" = "Date";
+
+"Date font" = "Date font";
+
+"Date size" = "Date size";
+
+"Date weight" = "Date weight";
+
+"Rounded" = "Rounded";
+
+"Serif" = "Serif";
+
+"Monospaced" = "Monospaced";
+
+"Regular" = "Regular";
+
+"Medium" = "Medium";
+
+"Semibold" = "Semibold";
+
+"Bold" = "Bold";
+
+"Choose System for font and weight, and 100% size, to restore the original date appearance." = "Choose System for font and weight, and 100% size, to restore the original date appearance.";

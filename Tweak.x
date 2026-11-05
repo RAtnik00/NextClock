@@ -9,11 +9,16 @@
 #import "Shared/NCPacks.h"
 #import "Shared/NCVersion.h"
 #import "Shared/NCLayoutSafety.h"
+#import "Shared/NCFavorites.h"
+#import "Shared/NCDateFont.h"
+#import "Shared/NCModernContext.h"
 #import <notify.h>
 
-// iOS 15 plus an experimental runtime-selected iOS 16/17 adapter. All rendering and settings changes run on the main thread.
+// Legacy date-view adapter (iOS 12-15) and experimental iOS 16/17 adapter.
+// iOS 12-14 rootful builds require device testing. UI changes run on main.
 static BOOL NCEnabled = YES, NCHideDate = NO, NCAnimated = YES, NCStillLowPower = NO, NCTint = NO;
 static BOOL NCShowSeconds = NO;
+static NSDictionary *NCDateStyle;
 static NSTimer *NCSecondsTimer;
 static BOOL NCScreenOn = NO;
 static int NCDisplayToken = -1;
@@ -38,13 +43,28 @@ static char NCLegacyTimeSuppressionKey;
 @implementation NCGlyph
 @end
 
-@interface NCClockState : NSObject
+static void NCCycleFavorite(void);
+static BOOL NCFavoriteGestureEnabled;
+
+@interface NCClockState : NSObject <UIGestureRecognizerDelegate>
 @property(nonatomic, strong) UIView *overlay;
 @property(nonatomic, strong) NSMutableArray<UIImageView *> *views;
 @property(nonatomic, copy) NSString *signature;
 @property(nonatomic) BOOL animated;
+@property(nonatomic,strong) UITapGestureRecognizer *favoriteTap;
 @end
 @implementation NCClockState
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+    if (!NCEnabled || !NCFavoriteGestureEnabled || self.overlay.hidden || self.overlay.alpha<=.01 || !self.overlay.window) return NO;
+    for (UIView *v=self.overlay;v;v=v.superview) if (v.hidden || v.alpha<=.01) return NO;
+    CGPoint point=[touch locationInView:self.overlay];
+    for (UIImageView *digit in self.views) if (!digit.hidden && CGRectContainsPoint(digit.frame,point)) return YES;
+    return NO;
+}
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)other { return YES; }
+- (void)cycleFavorite:(UITapGestureRecognizer *)gesture {
+    if (gesture.state==UIGestureRecognizerStateRecognized && NCEnabled && NCFavoriteGestureEnabled && !self.overlay.hidden) NCCycleFavorite();
+}
 @end
 
 static id NCPref(NSString *key) {
@@ -63,8 +83,10 @@ static NSString *NCString(NSString *key, NSString *fallback) {
 }
 static void NCLoadSettings(void) {
     CFPreferencesAppSynchronize(CFSTR("com.ratnik00.nextclock"));
+    NCDateStyle=NCNormalizeDateStyle(@{@"dateFontDesign":NCString(@"dateFontDesign",@"system"),@"dateFontScale":@(NCFloat(@"dateFontScale",1,.6,1.6)),@"dateFontWeight":NCString(@"dateFontWeight",@"system")});
     NCEnabled = NCBool(@"enabled", YES); NCHideDate = NCBool(@"hideDate", NO);
     NCShowSeconds = NCBool(@"showSeconds", NO);
+    NCFavoriteGestureEnabled = NCBool(@"doubleTapFavorites", NO);
     NCAnimated = ![NCString(@"animationStyle", @"animated") isEqual:@"static"];
     NCStillLowPower = NCBool(@"staticInLowPower", NO); NCTint = NCBool(@"colorFilterEnabled", NO);
     NCScale = NCFloat(@"clockScale", 1, .3, 2.5);
@@ -78,7 +100,7 @@ static void NCLoadSettings(void) {
     [NCImages removeAllObjects]; NCResolvedFolder = nil; NCGeneration++;
 }
 static BOOL NCWantsAnimation(void) {
-    return NCAnimated && !(NCStillLowPower && NSProcessInfo.processInfo.lowPowerModeEnabled);
+    return !UIAccessibilityIsReduceMotionEnabled() && NCAnimated && !(NCStillLowPower && NSProcessInfo.processInfo.lowPowerModeEnabled);
 }
 static UIColor *NCColor(void) {
     NSString *hex = [NCColorHex stringByReplacingOccurrencesOfString:@"#" withString:@""];
@@ -217,6 +239,17 @@ static void NCRefreshViews(void) {
     }
 }
 
+static void NCCycleFavorite(void) {
+    CFPreferencesAppSynchronize(CFSTR("com.ratnik00.nextclock"));
+    NSArray *favorites=NCFavoriteIdentifiers(NCPref(@"favoritePacks"),NCAllPacks());
+    NSString *next=NCNextFavorite(favorites,NCString(@"pack",@"Anime"));
+    if (!next) return;
+    CFPreferencesSetAppValue(CFSTR("pack"),(__bridge CFStringRef)next,CFSTR("com.ratnik00.nextclock"));
+    if (!CFPreferencesAppSynchronize(CFSTR("com.ratnik00.nextclock"))) return;
+    NCLoadSettings(); NCRefreshViews();
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.ratnik00.nextclock/preferenceschanged"),NULL,NULL,YES);
+}
+
 static char NCLayoutInProgressKey, NCLayoutQueuedKey;
 // Coalesce callbacks from system setters/window attachment. UIKit can call these
 // while the containing clock is already laying out its own children.
@@ -235,7 +268,7 @@ static void NCRequestClockLayout(UIView *host) {
 static BOOL NCHasVisibleClock(void) {
     for (UIView *view in NCViews.allObjects) {
         NCClockState *state = objc_getAssociatedObject(view, &NCStateKey);
-        if (!view.window || !state.overlay || state.overlay.hidden) continue;
+        if (!view.window || !state.overlay || state.overlay.hidden || state.overlay.alpha<=.01) continue;
 
         BOOL visible = YES;
 
@@ -352,6 +385,9 @@ static void NCStart(void) {
     CFNotificationCenterAddObserver(center, NULL, NCRespring, CFSTR("com.ratnik00.nextclock/respring"), NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
     [NSNotificationCenter.defaultCenter addObserverForName:NSProcessInfoPowerStateDidChangeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
         NCResolvedFolder = nil; NCGeneration++; [NCImages removeAllObjects]; NCRefreshViews();
+    }];
+    [NSNotificationCenter.defaultCenter addObserverForName:UIAccessibilityReduceMotionStatusDidChangeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+        NCResolvedFolder=nil; NCGeneration++; [NCImages removeAllObjects]; NCRefreshViews();
     }];
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidReceiveMemoryWarningNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { [NCImages removeAllObjects]; }];
     [NSNotificationCenter.defaultCenter addObserverForName:NSSystemTimeZoneDidChangeNotification object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) { NCGeneration++; NCRefreshViews(); }];
@@ -477,8 +513,62 @@ static void NCPlaceLegacyDate(UIView *host, UIView *date, NCClockState *state) {
     [UIView performWithoutAnimation:^{ date.transform = transform; }];
 }
 
-static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NSDate *providedDate) {
+@protocol NCDateFontHost <NSObject>
+@property(nonatomic,strong) UIFont *font;
+@end
+@interface NCDateFontState : NSObject
+@property(nonatomic,strong) UIFont *original;
+@property(nonatomic,strong) UIFont *applied;
+@property(nonatomic,strong) NSAttributedString *originalText;
+@property(nonatomic,strong) NSAttributedString *appliedText;
+@property(nonatomic) NSUInteger generation;
+@property(nonatomic) NSUInteger attempts;
+@end
+@implementation NCDateFontState
+@end
+static char NCDateFontStateKey;
+static void NCStyleDateTree(UIView *date, BOOL allowCustom) {
+    if (!date) return;
+    NSMutableArray *pending=[NSMutableArray arrayWithObject:date]; NSUInteger visited=0;
+    while (pending.count && visited++<64) {
+        UIView *view=pending.lastObject; [pending removeLastObject];
+        [pending addObjectsFromArray:view.subviews];
+        Class cls=object_getClass(view);
+        if (!NCMethodHasABI(cls,@selector(font),"@",@[]) || !NCMethodHasABI(cls,@selector(setFont:),"v",@[@"@"])) continue;
+        id<NCDateFontHost> label=(id)view; UIFont *current=label.font;
+        if (![current isKindOfClass:UIFont.class]) continue;
+        NCDateFontState *state=objc_getAssociatedObject(view,&NCDateFontStateKey);
+        BOOL custom=allowCustom && !NCDateStyleIsSystem(NCDateStyle);
+        UILabel *textLabel=[view isKindOfClass:UILabel.class] ? (UILabel *)view : nil;
+        if (!custom) {
+            BOOL restoreText=state.appliedText && [textLabel.attributedText isEqual:state.appliedText];
+            if (state && [current isEqual:state.applied]) label.font=state.original;
+            if (restoreText) textLabel.attributedText=state.originalText;
+            objc_setAssociatedObject(view,&NCDateFontStateKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC); continue;
+        }
+        if (!state) {state=[NCDateFontState new];state.original=current;objc_setAssociatedObject(view,&NCDateFontStateKey,state,OBJC_ASSOCIATION_RETAIN_NONATOMIC);}
+        NSAttributedString *currentText=textLabel.attributedText;
+        NSAttributedString *baseText=(state.appliedText && [currentText isEqual:state.appliedText]) ? state.originalText : currentText;
+        if (state.generation!=NCGeneration || (baseText.length && ![baseText.string isEqual:state.originalText.string])) {state.generation=NCGeneration;state.attempts=0;}
+        // Bound retries when another tweak/the system repeatedly rewrites a font.
+        // Leave the native label alone rather than causing endless layout passes.
+        if (state.attempts>=4) continue;
+        if (![current isEqual:state.applied]) state.original=current;
+        UIFont *font=NCDateFont(NCDateStyle,state.original);
+        if (![current isEqual:font]) {state.attempts++;label.font=font;}
+        state.applied=font;
+        if (baseText.length) {
+            state.originalText=[baseText copy]; NSMutableAttributedString *styled=[baseText mutableCopy];
+            [styled addAttribute:NSFontAttributeName value:font range:NSMakeRange(0,styled.length)];
+            if (![textLabel.attributedText isEqual:styled]) {state.attempts++;textLabel.attributedText=styled;}
+            state.appliedText=styled;
+        } else {state.originalText=nil;state.appliedText=nil;}
+    }
+}
+
+static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NSDate *providedDate, BOOL modern) {
     NCStart();
+    NCStyleDateTree(dateLabel, NCEnabled);
     [NCViews addObject:self];
     NCUpdateSecondsTimer();
     NCClockState *state = objc_getAssociatedObject(self, &NCStateKey);
@@ -489,6 +579,17 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
     }
     NSNumber *savedTimeAlpha = objc_getAssociatedObject(self, &NCContentAlphaKey);
     CGFloat systemTimeAlpha = savedTimeAlpha ? savedTimeAlpha.doubleValue : 1;
+    BOOL statusVisible = NO;
+    if (modern) {
+        NSNumber *saved=objc_getAssociatedObject(self,&NCDateAlphaKey);
+        if (NCEnabled && NCHideDate && dateLabel) {
+            if (!saved) objc_setAssociatedObject(self,&NCDateAlphaKey,@(dateLabel.alpha),OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            dateLabel.alpha=0;
+        } else if (saved) {
+            dateLabel.alpha=saved.doubleValue;
+            objc_setAssociatedObject(self,&NCDateAlphaKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        }
+    } else {
     NSNumber *savedDateAlpha =
         objc_getAssociatedObject(self, &NCDateAlphaKey);
 
@@ -504,7 +605,7 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
         );
     }
 
-    BOOL statusVisible = NCEnabled && NCStatusSubtitleVisible(self);
+    statusVisible = NCEnabled && NCStatusSubtitleVisible(self);
     BOOL suppressDate = NCEnabled && (NCHideDate || statusVisible);
     // Hide the date before restoring its custom position. Otherwise its
     // presentation layer can show a frame at the system position during a fade.
@@ -516,6 +617,7 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
     }
     NCRestoreDatePlacement(dateLabel);
     if (!suppressDate) dateLabel.alpha = systemDateAlpha;
+    }
     if (statusVisible) {
         [UIView performWithoutAnimation:^{
             [timeLabel.layer removeAnimationForKey:@"opacity"];
@@ -576,6 +678,10 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
         state = [NCClockState new]; state.overlay = [UIView new]; state.overlay.userInteractionEnabled = NO;
         state.views = [NSMutableArray array];
         objc_setAssociatedObject(self, &NCStateKey, state, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        UITapGestureRecognizer *tap=[[UITapGestureRecognizer alloc] initWithTarget:state action:@selector(cycleFavorite:)];
+        tap.numberOfTapsRequired=2; tap.cancelsTouchesInView=NO;
+        tap.delaysTouchesBegan=NO; tap.delaysTouchesEnded=NO; tap.delegate=state;
+        state.favoriteTap=tap; [self addGestureRecognizer:tap];
     }
     if (state.overlay.superview != self) [self addSubview:state.overlay];
     state.overlay.frame = self.bounds; state.overlay.hidden = NO;
@@ -624,7 +730,7 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
     // Allow the renderer to restore the system label if a pack cannot load.
     if (timeLabel) objc_setAssociatedObject(timeLabel, &NCLegacyTimeSuppressionKey, nil,
                                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    NCLayoutClock(self, timeLabel, dateLabel, self.date);
+    NCLayoutClock(self, timeLabel, dateLabel, self.date, NO);
     NCClockState *state = objc_getAssociatedObject(self, &NCStateKey);
     BOOL replacingTime = NCEnabled &&
         ((state.signature && !state.overlay.hidden) || NCStatusSubtitleVisible(self));
@@ -961,6 +1067,78 @@ static BOOL NCShouldSuppressLegacyDate(UIView *view) {
 // class dump. Runtime availability checks do not establish iOS 16/17 compatibility.
 static char NCModernDisplayDateKey;
 static char NCModernSuppressTimeKey;
+static char NCModernRequestedAlphaKey, NCModernOwnAlphaWriteKey, NCModernDateKey, NCModernOwnerKey;
+@interface NCModernOwner : NSObject
+@property(nonatomic,weak) UIView *host;
+@end
+@implementation NCModernOwner
+@end
+static void NCModernFollowSystemAlpha(UIView *time, CGFloat alpha) {
+    NCModernOwner *owner=objc_getAssociatedObject(time,&NCModernOwnerKey);
+    UIView *host=owner.host;
+    if (!host || !NCEnabled) return;
+    NCClockState *state=objc_getAssociatedObject(host,&NCStateKey);
+    // Executed in the same UIKit transaction as the native time alpha setter.
+    // No guessed charging duration and no delayed reveal.
+    state.overlay.alpha=NCModernVisibleAlpha(alpha);
+    objc_setAssociatedObject(host,&NCContentAlphaKey,@(NCModernVisibleAlpha(alpha)),OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+
+// The native time view remains in its hierarchy. Only a renderer that owns it
+// may suppress it; remember system alpha requests for exact hand-back.
+static void NCModernSetTimeAlpha(UIView *time, CGFloat alpha) {
+    if (!time) return;
+    objc_setAssociatedObject(time,&NCModernOwnAlphaWriteKey,@YES,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    @try { time.alpha=alpha; }
+    @finally { objc_setAssociatedObject(time,&NCModernOwnAlphaWriteKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC); }
+}
+static void NCModernClaimTime(UIView *time) {
+    if (!objc_getAssociatedObject(time,&NCModernRequestedAlphaKey))
+        objc_setAssociatedObject(time,&NCModernRequestedAlphaKey,@(time.alpha),OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(time,&NCModernSuppressTimeKey,@YES,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    NCModernSetTimeAlpha(time,0);
+}
+static void NCModernReleaseTime(UIView *time) {
+    NSNumber *alpha=objc_getAssociatedObject(time,&NCModernRequestedAlphaKey);
+    objc_setAssociatedObject(time,&NCModernSuppressTimeKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    if (alpha) NCModernSetTimeAlpha(time,alpha.doubleValue);
+    objc_setAssociatedObject(time,&NCModernRequestedAlphaKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(time,&NCModernOwnerKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+static BOOL NCModernUsesEditingLayout(UIView *host) {
+    SEL selector=NSSelectorFromString(@"usesEditingLayout");
+    if (!NCMethodHasABI(object_getClass(host),selector,@encode(BOOL),@[]) &&
+        !NCMethodHasABI(object_getClass(host),selector,"c",@[])) return NO;
+    BOOL (*read)(id,SEL)=(BOOL (*)(id,SEL))[host methodForSelector:selector];
+    return read(host,selector);
+}
+static BOOL NCModernEditingContext(UIView *host) {
+    // Editors can host the same renderer; galleries/snapshots remain native
+    // until their separate rendering process and capture lifecycle are verified.
+    // Private containers differ by OS. Inspect the responder chain, not label
+    // text; unknown container names must be checked on the test device.
+    UIResponder *item=host;
+    for (NSUInteger i=0;item && i<96;i++,item=item.nextResponder) {
+        if (NCModernIsPreviewContainer(NSStringFromClass(item.class))) return YES;
+    }
+    return NO;
+}
+static void NCModernReleaseClock(UIView *host, UIView *time) {
+    NCModernReleaseTime(time);
+    NCClockState *state=objc_getAssociatedObject(host,&NCStateKey);
+    state.overlay.hidden=YES; state.signature=nil;
+    for (UIImageView *image in state.views) NCClearView(image);
+    UIView *date=objc_getAssociatedObject(host,&NCModernDateKey);
+    NSNumber *alpha=objc_getAssociatedObject(host,&NCDateAlphaKey);
+    if (date && alpha) date.alpha=alpha.doubleValue;
+    NCStyleDateTree(date,NO);
+    objc_setAssociatedObject(host,&NCDateAlphaKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(host,&NCContentAlphaKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(host,&NCModernDateKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    NCUpdateSecondsTimer();
+}
+
 @interface CSProminentDisplayView : UIView
 - (UIView *)timeView;
 - (UIView *)subtitleView;
@@ -968,10 +1146,16 @@ static char NCModernSuppressTimeKey;
 @end
 
 static void NCCompatibilitySnapshot(UIView *host) {
-    static BOOL captured = NO;
-    if (captured) return;
-    captured = YES;
-    NSMutableString *report = [NSMutableString stringWithFormat:@"NextClock %@\niOS: %@\n", NC_VERSION, UIDevice.currentDevice.systemVersion];
+    static NSMutableDictionary<NSString *,NSString *> *snapshots;
+    static dispatch_queue_t writer;
+    if (!snapshots) { snapshots=[NSMutableDictionary dictionary]; writer=dispatch_queue_create("com.ratnik00.nextclock.snapshots",DISPATCH_QUEUE_SERIAL); }
+    NSString *mode=NCModernEditingContext(host) ? @"gallery/snapshot" :
+        (NCModernUsesEditingLayout(host) ? @"editor" : @"live/unknown");
+    if (snapshots[mode]) return;
+    NSMutableString *report = [NSMutableString stringWithFormat:@"Context: %@\n", mode];
+    UIResponder *responder=host;
+    for (NSUInteger i=0;responder && i<48;i++,responder=responder.nextResponder)
+        [report appendFormat:@"Responder: %@\n",NSStringFromClass(responder.class)];
     NSMutableArray<UIView *> *queue = [NSMutableArray arrayWithObject:host];
     for (NSUInteger i = 0; i < queue.count && i < 120; i++) {
         UIView *view = queue[i];
@@ -980,84 +1164,82 @@ static void NCCompatibilitySnapshot(UIView *host) {
         if (remaining) [queue addObjectsFromArray:[view.subviews subarrayWithRange:
             NSMakeRange(0, MIN(remaining, view.subviews.count))]];
     }
-    NSString *snapshot = report.copy;
-    dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+    snapshots[mode]=report.copy;
+    NSMutableString *combined=[NSMutableString stringWithFormat:@"NextClock %@\niOS: %@\n",NC_VERSION,UIDevice.currentDevice.systemVersion];
+    for (NSString *key in [[snapshots allKeys] sortedArrayUsingSelector:@selector(compare:)])
+        [combined appendFormat:@"\n%@\n",snapshots[key]];
+    NSString *snapshot = combined.copy;
+    dispatch_async(writer, ^{
         [snapshot writeToFile:@"/var/mobile/Library/NextClock-compatibility.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
     });
 }
 %group NCModernClock
 %hook CSProminentDisplayView
 - (void)layoutSubviews {
-    NCPerformGuarded(self,&NCLayoutInProgressKey, ^{
-    // Allow the renderer to restore stock content on every fallback path.
-    UIView *previousTime = self.timeView;
-    if ([previousTime isKindOfClass:UIView.class]) {
-        objc_setAssociatedObject(previousTime, &NCModernSuppressTimeKey, nil,
-                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    NCStart();
+    // An untouched, disabled instance must be a straight pass-through.
+    UIView *priorTime=self.timeView;
+    BOOL managed=objc_getAssociatedObject(self,&NCStateKey)!=nil ||
+        objc_getAssociatedObject(self,&NCModernDateKey)!=nil ||
+        objc_getAssociatedObject(priorTime,&NCModernRequestedAlphaKey)!=nil;
+    if (!NCEnabled && !managed) {
+        %orig;
+        return;
     }
+    NCPerformGuarded(self,&NCLayoutInProgressKey, ^{
+    BOOL editing=NCModernEditingContext(self);
+    if (!NCEnabled || editing) NCModernReleaseClock(self,priorTime);
     %orig;
-    NCCompatibilitySnapshot(self);
+    editing=NCModernEditingContext(self);
+    if (NCEnabled) NCCompatibilitySnapshot(self);
+    if (!NCModernShouldRender(NCEnabled,self.window!=nil,editing)) {
+        NCModernReleaseClock(self,self.timeView);
+        return;
+    }
     UIView *time = self.timeView;
-    if (![time isKindOfClass:UIView.class] || ![time isDescendantOfView:self]) return;
+    if (priorTime!=time) NCModernReleaseTime(priorTime);
+    if (![time isKindOfClass:UIView.class] || ![time isDescendantOfView:self]) {
+        NCModernReleaseClock(self,priorTime);
+        return;
+    }
     UIView *subtitle = self.subtitleView;
     Class dateClass = NSClassFromString(@"CSProminentSubtitleDateView");
     UIView *date = dateClass && [subtitle isKindOfClass:dateClass] ? subtitle : nil;
-    UIView *transient = nil;
-
-    if ([self respondsToSelector:@selector(transientSubtitleView)]) {
-        transient = self.transientSubtitleView;
+    UIView *oldDate=objc_getAssociatedObject(self,&NCModernDateKey);
+    if (oldDate && oldDate!=date) {
+        NSNumber *alpha=objc_getAssociatedObject(self,&NCDateAlphaKey);
+        if (alpha) oldDate.alpha=alpha.doubleValue;
+        NCStyleDateTree(oldDate,NO);
+        objc_setAssociatedObject(self,&NCDateAlphaKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     }
-
-    BOOL transientVisible =
-        [transient isKindOfClass:UIView.class] &&
-        transient.superview &&
-        !transient.hidden &&
-        transient.alpha > 0.01;
-
-    BOOL statusVisible =
-        subtitle && !date &&
-        !subtitle.hidden && subtitle.alpha > 0.01;
-
-    if (NCEnabled && (transientVisible || statusVisible)) {
-        NCClockState *state =
-            objc_getAssociatedObject(self, &NCStateKey);
-
-        // Preserve the date's original alpha before hiding it.
-        if (date &&
-            !objc_getAssociatedObject(self, &NCDateAlphaKey)) {
-            objc_setAssociatedObject(
-                self,
-                &NCDateAlphaKey,
-                @(date.alpha),
-                OBJC_ASSOCIATION_RETAIN_NONATOMIC
-            );
-        }
-
-        objc_setAssociatedObject(time, &NCModernSuppressTimeKey, @YES,
-                                 OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-        time.alpha = 0;
-        date.alpha = 0;
-        state.overlay.hidden = YES;
-        state.signature = nil;
-
-        for (UIImageView *image in state.views) {
-            NCClearView(image);
-        }
-
-        NCUpdateSecondsTimer();
-        return;
-    }
+    objc_setAssociatedObject(self,&NCModernDateKey,date,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    // Keep owned native text suppressed through live layout. Restoring it on
+    // every pass could itself create a stock-clock opacity animation.
+    // A charging subtitle can legitimately coexist with the clock. Only the
+    // native time view's visibility determines whether our digits fade out.
     NSDate *displayDate =
         objc_getAssociatedObject(self, &NCModernDisplayDateKey);
 
-    NCLayoutClock(self, time, date, displayDate ?: [NSDate date]);
+    NSNumber *savedAlpha=objc_getAssociatedObject(time,&NCModernRequestedAlphaKey);
+    CGFloat requestedAlpha=NCModernVisibleAlpha(savedAlpha ? savedAlpha.doubleValue : time.alpha);
+    objc_setAssociatedObject(self,&NCContentAlphaKey,@(requestedAlpha),OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(time,&NCModernOwnAlphaWriteKey,@YES,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    @try { NCLayoutClock(self, time, date, displayDate ?: [NSDate date], YES); }
+    @finally { objc_setAssociatedObject(time,&NCModernOwnAlphaWriteKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC); }
     NCClockState *rendered = objc_getAssociatedObject(self, &NCStateKey);
+    // Editing a wallpaper must not cycle global favorites via double tap.
+    rendered.favoriteTap.enabled=!NCModernUsesEditingLayout(self);
     BOOL replacingTime = NCEnabled && rendered.overlay &&
         rendered.overlay.superview == self && !rendered.overlay.hidden;
-    objc_setAssociatedObject(time, &NCModernSuppressTimeKey,
-                             replacingTime ? @YES : nil,
-                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    if (replacingTime) time.alpha = 0;
+    if (replacingTime) {
+        // NCLayoutClock has already hidden the view; retain the pre-render value.
+        objc_setAssociatedObject(time,&NCModernRequestedAlphaKey,@(requestedAlpha),OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        NCModernOwner *owner=[NCModernOwner new]; owner.host=self;
+        objc_setAssociatedObject(time,&NCModernOwnerKey,owner,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        NCModernClaimTime(time);
+    } else {
+        NCModernReleaseTime(time);
+    }
 
     });
 }
@@ -1070,7 +1252,7 @@ static void NCCompatibilitySnapshot(UIView *host) {
     );
 
     %orig;
-    [self setNeedsLayout];
+    if (NCEnabled) [self setNeedsLayout];
 }
 - (void)didMoveToWindow {
     %orig;
@@ -1078,11 +1260,8 @@ static void NCCompatibilitySnapshot(UIView *host) {
     if (!self.window) {
         for (UIImageView *image in state.views) NCFreezeView(image);
         state.signature = nil;
-    } else {
-        [UIView performWithoutAnimation:^{
-            [self setNeedsLayout];
-            [self layoutIfNeeded];
-        }];
+    } else if (NCEnabled) {
+        NCRequestClockLayout(self);
     }
     NCUpdateSecondsTimer();
 }
@@ -1098,6 +1277,11 @@ static void NCCompatibilitySnapshot(UIView *host) {
 %group NCModernTimeVisibility
 %hook CSProminentTimeView
 - (void)setAlpha:(CGFloat)alpha {
+    BOOL ownWrite=[objc_getAssociatedObject(self,&NCModernOwnAlphaWriteKey) boolValue];
+    if (!ownWrite && objc_getAssociatedObject(self,&NCModernRequestedAlphaKey)) {
+        objc_setAssociatedObject(self,&NCModernRequestedAlphaKey,@(NCModernVisibleAlpha(alpha)),OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+        NCModernFollowSystemAlpha(self,alpha);
+    }
     BOOL suppress = NCEnabled &&
         [objc_getAssociatedObject(self, &NCModernSuppressTimeKey) boolValue];
     %orig(suppress ? 0 : alpha);
@@ -1106,7 +1290,7 @@ static void NCCompatibilitySnapshot(UIView *host) {
     %orig;
     if (NCEnabled &&
         [objc_getAssociatedObject(self, &NCModernSuppressTimeKey) boolValue]) {
-        self.alpha = 0;
+        NCModernSetTimeAlpha(self,0);
     }
 }
 %end
@@ -1117,11 +1301,11 @@ static void NCCompatibilitySnapshot(UIView *host) {
 %hook CSProminentDisplayView
 - (void)setSubtitleAlpha:(CGFloat)alpha {
     %orig;
-    [self setNeedsLayout];
+    if (NCEnabled) NCRequestClockLayout(self);
 }
 - (void)setTransientSubtitleView:(UIView *)view {
     %orig;
-    [self setNeedsLayout];
+    if (NCEnabled) NCRequestClockLayout(self);
 }
 %end
 %end
@@ -1134,7 +1318,9 @@ static void NCCompatibilitySnapshot(UIView *host) {
             NCMethodHasABI(modernClass, @selector(subtitleView), "@", @[]) &&
             NCMethodHasABI(modernClass, @selector(setDisplayDate:), "v", @[@"@"]);
         Class legacyClass = NSClassFromString(@"SBFLockScreenDateView");
-        BOOL legacy = legacyClass && NCMethodHasABI(legacyClass, @selector(date), "@", @[]) &&
+        BOOL legacy = legacyClass && [legacyClass isSubclassOfClass:UIView.class] &&
+            class_getInstanceMethod(legacyClass, @selector(layoutSubviews)) &&
+            NCMethodHasABI(legacyClass, @selector(date), "@", @[]) &&
             NCMethodHasABI(legacyClass, @selector(setDate:), "v", @[@"@"]);
         NSMutableString *startupReport = [NSMutableString stringWithFormat:
             @"NextClock %@\niOS: %@\nAdapter: %@\n",
@@ -1142,6 +1328,15 @@ static void NCCompatibilitySnapshot(UIView *host) {
         for (NSString *name in @[@"SBFLockScreenDateView", @"CSProminentDisplayView", @"CSProminentTimeView", @"CSProminentSubtitleDateView"]) {
             [startupReport appendFormat:@"%@: %@\n", name, NSClassFromString(name) ? @"present" : @"absent"];
         }
+        [startupReport appendString:@"\nLegacy adapter methods:\n"];
+        for (NSString *name in @[@"date", @"setDate:", @"layoutSubviews",
+                                @"setContentAlpha:withSubtitleVisible:"]) {
+            BOOL present = legacyClass && class_getInstanceMethod(legacyClass, NSSelectorFromString(name));
+            [startupReport appendFormat:@"%@: %@\n", name, present ? @"present" : @"absent"];
+        }
+#ifdef NC_LEGACY_BUILD
+        [startupReport appendString:@"Build: experimental rootful; iOS 12-14 device testing pending\n"];
+#endif
         [startupReport appendString:@"\nModern adapter methods:\n"];
 
         for (NSString *name in @[

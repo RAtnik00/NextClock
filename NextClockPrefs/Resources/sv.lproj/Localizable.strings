@@ -81,3 +81,69 @@
 // Halloween edition
 "🎃 Happy Halloween!" = "🎃 Glad Halloween!";
 "Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Fira med det animerade Halloween-paketet. Välj Halloween under Paket.";
+
+"Experimental rootful build for iOS 12–14. Device testing required." = "Experimentell rootful-version för iOS 12–14. Måste testas på en enhet.";
+
+"Preview & Profiles" = "Förhandsvisning och profiler";
+
+"Preview" = "Förhandsvisning";
+
+"Favorites" = "Favoriter";
+
+"Double-tap to switch" = "Byt med dubbeltryck";
+
+"Choose at least two packs. Double-tap the clock digits to switch. Long-press remains available for wallpaper editing." = "Välj minst två paket. Dubbeltryck på klockans siffror för att byta. Långtryck fungerar fortfarande för att redigera bakgrunden.";
+
+"Stable releases / Downgrade" = "Stabila versioner / Nedgradering";
+
+"Draft only. Apply sends these settings to the Lock Screen." = "Endast utkast. Använd överför inställningarna till låsskärmen.";
+
+"Apply" = "Använd";
+
+"Applied" = "Tillämpat";
+
+"Appearance applied. The enabled switch was not changed." = "Utseendet har tillämpats. Aktiveringsknappen ändrades inte.";
+
+"Missing pack. Install it or choose another pack." = "Paket saknas. Installera det eller välj ett annat.";
+
+"Preview unavailable. Try a static pack." = "Förhandsvisning saknas. Prova ett statiskt paket.";
+
+"Could not save settings." = "Kunde inte spara inställningarna.";
+
+"Error" = "Fel";
+
+"Configure clock" = "Anpassa klockan";
+
+"Advanced" = "Avancerat";
+
+"About & Support" = "Om och stöd";
+
+"Appearance" = "Utseende";
+
+"Layout" = "Layout";
+
+"The Lock Screen will restart. Your settings will be kept." = "Låsskärmen startas om. Dina inställningar sparas.";
+
+"Date" = "Datum";
+
+"Date font" = "Datumteckensnitt";
+
+"Date size" = "Datumstorlek";
+
+"Date weight" = "Datumets teckenvikt";
+
+"Rounded" = "Rundat";
+
+"Serif" = "Med seriffer";
+
+"Monospaced" = "Fast bredd";
+
+"Regular" = "Normal";
+
+"Medium" = "Medium";
+
+"Semibold" = "Halvfet";
+
+"Bold" = "Fet";
+
+"Choose System for font and weight, and 100% size, to restore the original date appearance." = "Välj System för teckensnitt och vikt samt 100 % storlek för att återställa datumets ursprungliga utseende.";

@@ -4,7 +4,18 @@
 
 Custom lock screen clocks for rootless iOS 15, with an experimental iOS 16–17 beta.
 
+## 1.2.0 beta 6
+
+Charging visibility and wallpaper-editor rendering improvements. Developer-tested on iPhone X / iOS 16.7.5 and iPhone 7 Plus / iOS 15.8.8. Gallery thumbnails remain native; no per-wallpaper pack selection or new iOS 18 support. See [IOS16-REWORK.md](IOS16-REWORK.md).
+
+
+Adds date font design, relative size and weight customization, favorite packs with opt-in double-tap switching, an animated draft preview with Apply, and a stable-release archive for rollback. Beta 2 consolidates appearance controls (including color and Low Power Mode) in Configure clock and moves maintenance tools to Advanced. Beta 3 uses native grouped editor lists, checkmark selection pages, Dynamic Type and VoiceOver labels, respects Reduce Motion, and confirms respring. Profile saving remains Pro-only. New gestures and preview behavior require device testing. See [BETA-1.2.md](BETA-1.2.md).
+
 ## Compatibility
+
+The separate, unpublished [NextClock Pro prototype](PRO-ALPHA.md) adds an opt-in
+preview and appearance-profile editor. Build it explicitly with `NC_PRO=1`;
+the ordinary build retains the free feature set.
 
 - Rootless iOS 15: previously tested devices listed below
 - iOS 16–17: experimental; limited tester reports, not universal compatibility
@@ -17,10 +28,6 @@ Confirmed working:
 - iPhone 13 Pro Max — iOS 15.1.1, Dopamine (compatibility fix confirmed by a tester)
 
 The optional seconds display has been tested on iPhone 7 Plus; it has not yet been separately verified on iPhone 12 or iPhone 13 Pro Max. Other devices and iOS 15 versions require testing.
-
-## 1.1.1 — Stable source release
-
-Includes the reentrant-layout guard and private-method signature checks added after 1.1.0. See [SOURCE-1.1.1.md](SOURCE-1.1.1.md) for source provenance, binary comparison and build information.
 
 ## 1.1.0 — October 23, 2026
 
@@ -46,15 +53,9 @@ Image limits: 2048 px per dimension, 240 frames, 8 MB encoded and 96 MB decoded 
 Theos, Xcode, patched iOS 16.5 SDK. Run the checks in [Tests/README.md](Tests/README.md), then `make package FINALPACKAGE=1`. arm64 and arm64e, rootless, deployment iOS 15. The rootless package architecture remains `iphoneos-arm64`. PreferenceLoader required.
 
 ## Acknowledgements
-NextClock includes adaptations from [FlexClock](https://github.com/tr3tol/FlexClock)
-by [tr3tol](https://github.com/tr3tol), including its settings layout and pack
-conventions. The FlexClock private interfaces informed the modern adapter.
-Thank you to tr3tol for the original project.
+NextClock includes adaptations from [FlexClock](https://github.com/tr3tol/FlexClock) by [tr3tol](https://github.com/tr3tol), including its settings layout and pack conventions. Thank you to tr3tol for the original project. NextClock adds its own rendering, validation and compatibility work for earlier iOS versions. The original clock concept and Anime artwork are credited to [AniTime](https://github.com/yandevelop/AniTime) by yandevelop. See [CREDITS.md](CREDITS.md) for attribution and licensing details.
 
-The original clock concept and Anime artwork are credited to
-[AniTime](https://github.com/yandevelop/AniTime) by yandevelop.
-Pixel, CRT and Sakura artwork came from the FlexClock reference. Artwork rights
-are separate from the source-code license; see [CREDITS.md](CREDITS.md).
+Anime artwork is from AniTime; Pixel, CRT and Sakura artwork is from the supplied FlexClock reference. These are third-party assets, not original NextClock artwork. Artwork rights are separate from the source-code license; see [CREDITS.md](CREDITS.md). AniTime source code is not included.
 
 ## Adaptations
 Staged imports and confirmations preserve existing packs; every glyph is validated; reset clears all implemented preferences. iOS 15 clocks are bounded to screen width. Exact frame delays improve on uniform reference playback. About names NextClock and RAtnik00; acknowledgements are in this README.
@@ -66,8 +67,7 @@ Local release checks passed on the development device, alongside native pack/ZIP
 An iOS 13–14 port is planned as a separate update. Version 1.1.0 requires iOS 15 or newer; it does not include that port.
 
 ## License
-See [LICENSE](LICENSE) for GPLv3 and [CREDITS.md](CREDITS.md) for upstream attribution.
-NextClock source is provided under GPL-3.0. The settings layout is adapted from FlexClock (tr3tol, GPL-3.0); its attribution is retained here. Halloween artwork was generated with the built-in image generation tool and animated with the accompanying pack builder. This source license does not grant rights to third-party artwork.
+NextClock source is provided under GPL-3.0. The settings layout is adapted from [FlexClock](https://github.com/tr3tol/FlexClock) by tr3tol (GPL-3.0); attribution is retained in [CREDITS.md](CREDITS.md). Halloween artwork was generated with the built-in image generation tool and animated with the accompanying pack builder. This source license does not grant rights to third-party artwork.
 
 ## Support
 NextClock is free. Optional support: [buycoffee.to/ratnik00](https://buycoffee.to/ratnik00). Supporting the developer does not unlock extra features.
@@ -75,3 +75,10 @@ NextClock is free. Optional support: [buycoffee.to/ratnik00](https://buycoffee.t
 ### Halloween pack
 
 Animated pumpkin digits with flickering warm light and gentle motion; 24 APNG frames per glyph, transparent background, and a static option. Select Halloween in preferences. A localized Halloween greeting appears at the top of the settings page.
+
+## Experimental iOS 12–14 port
+
+An opt-in **rootful** test build is being prepared separately from the iOS 15+
+release. See [LEGACY-TESTING.md](LEGACY-TESTING.md) for package selection, the
+iOS 12/13 arm64e limitation, build commands and the device-testing checklist.
+This port has not yet been verified on a physical device.

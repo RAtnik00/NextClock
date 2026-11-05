@@ -81,3 +81,69 @@
 // Halloween edition
 "🎃 Happy Halloween!" = "🎃 God Halloween!";
 "Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Feir med den animerte Halloween-pakken. Velg Halloween under Pakke.";
+
+"Experimental rootful build for iOS 12–14. Device testing required." = "Eksperimentell rootful-versjon for iOS 12–14. Må testes på en enhet.";
+
+"Preview & Profiles" = "Forhåndsvisning og profiler";
+
+"Preview" = "Forhåndsvisning";
+
+"Favorites" = "Favoritter";
+
+"Double-tap to switch" = "Bytt med dobbelttrykk";
+
+"Choose at least two packs. Double-tap the clock digits to switch. Long-press remains available for wallpaper editing." = "Velg minst to pakker. Dobbelttrykk på klokkesifrene for å bytte. Langt trykk er fortsatt tilgjengelig for å redigere bakgrunnen.";
+
+"Stable releases / Downgrade" = "Stabile versjoner / Nedgradering";
+
+"Draft only. Apply sends these settings to the Lock Screen." = "Kun utkast. Bruk overfører innstillingene til låseskjermen.";
+
+"Apply" = "Bruk";
+
+"Applied" = "Brukt";
+
+"Appearance applied. The enabled switch was not changed." = "Utseendet er brukt. Aktiveringsbryteren ble ikke endret.";
+
+"Missing pack. Install it or choose another pack." = "Pakken mangler. Installer den eller velg en annen.";
+
+"Preview unavailable. Try a static pack." = "Forhåndsvisning utilgjengelig. Prøv en statisk pakke.";
+
+"Could not save settings." = "Kunne ikke lagre innstillingene.";
+
+"Error" = "Feil";
+
+"Configure clock" = "Tilpass klokken";
+
+"Advanced" = "Avansert";
+
+"About & Support" = "Om og støtte";
+
+"Appearance" = "Utseende";
+
+"Layout" = "Oppsett";
+
+"The Lock Screen will restart. Your settings will be kept." = "Låseskjermen starter på nytt. Innstillingene beholdes.";
+
+"Date" = "Dato";
+
+"Date font" = "Datoskrift";
+
+"Date size" = "Datostørrelse";
+
+"Date weight" = "Skriftvekt for dato";
+
+"Rounded" = "Avrundet";
+
+"Serif" = "Med seriffer";
+
+"Monospaced" = "Fast bredde";
+
+"Regular" = "Normal";
+
+"Medium" = "Medium";
+
+"Semibold" = "Halvfet";
+
+"Bold" = "Fet";
+
+"Choose System for font and weight, and 100% size, to restore the original date appearance." = "Velg System for skrift og vekt samt 100 % størrelse for å gjenopprette datoens opprinnelige utseende.";

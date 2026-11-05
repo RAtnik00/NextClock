@@ -83,3 +83,69 @@
 // Halloween edition
 "🎃 Happy Halloween!" = "🎃 Усіх із Гелловіном!";
 "Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Спробуйте анімований годинник Halloween. Виберіть Halloween у пункті «Набір».";
+
+"Experimental rootful build for iOS 12–14. Device testing required." = "Експериментальна rootful-збірка для iOS 12–14. Потрібна перевірка на пристрої.";
+
+"Preview & Profiles" = "Попередній перегляд і профілі";
+
+"Preview" = "Попередній перегляд";
+
+"Favorites" = "Обране";
+
+"Double-tap to switch" = "Перемикати подвійним дотиком";
+
+"Choose at least two packs. Double-tap the clock digits to switch. Long-press remains available for wallpaper editing." = "Виберіть щонайменше два набори. Двічі торкніться цифр годинника для перемикання. Тривале натискання залишається доступним для редагування шпалер.";
+
+"Stable releases / Downgrade" = "Стабільні версії / Відкат";
+
+"Draft only. Apply sends these settings to the Lock Screen." = "Це чернетка. Натисніть «Застосувати», щоб змінити екран блокування.";
+
+"Apply" = "Застосувати";
+
+"Applied" = "Застосовано";
+
+"Appearance applied. The enabled switch was not changed." = "Оформлення застосовано. Перемикач увімкнення твіка не змінено.";
+
+"Missing pack. Install it or choose another pack." = "Набір не знайдено. Установіть його або виберіть інший.";
+
+"Preview unavailable. Try a static pack." = "Перегляд недоступний. Спробуйте статичний набір.";
+
+"Could not save settings." = "Не вдалося зберегти налаштування.";
+
+"Error" = "Помилка";
+
+"Configure clock" = "Налаштувати годинник";
+
+"Advanced" = "Додатково";
+
+"About & Support" = "Про твік і підтримка";
+
+"Appearance" = "Оформлення";
+
+"Layout" = "Розташування";
+
+"The Lock Screen will restart. Your settings will be kept." = "Екран блокування буде перезапущено. Ваші налаштування збережуться.";
+
+"Date" = "Дата";
+
+"Date font" = "Шрифт дати";
+
+"Date size" = "Розмір дати";
+
+"Date weight" = "Насиченість дати";
+
+"Rounded" = "Заокруглений";
+
+"Serif" = "Із засічками";
+
+"Monospaced" = "Моноширинний";
+
+"Regular" = "Звичайний";
+
+"Medium" = "Середній";
+
+"Semibold" = "Напівжирний";
+
+"Bold" = "Жирний";
+
+"Choose System for font and weight, and 100% size, to restore the original date appearance." = "Щоб повернути початковий вигляд дати, виберіть «Системний» для шрифту й насиченості та розмір 100%.";

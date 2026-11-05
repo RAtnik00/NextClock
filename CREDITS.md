@@ -34,7 +34,7 @@ pack builder. Other pack-source notes are under Assets/PackSources.
 
 ## Source availability
 
-Public source location: https://github.com/RAtnik00/NextClock
+Intended public source location: https://github.com/RAtnik00/NextClock
 
 Published binaries need matching source versions, including the build and
 packaging scripts used for those versions. A newer development snapshot should

@@ -81,3 +81,69 @@
 // Halloween edition
 "🎃 Happy Halloween!" = "🎃 Fröhliches Halloween!";
 "Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Feiere mit dem animierten Halloween-Paket. Wähle unter „Paket“ Halloween aus.";
+
+"Experimental rootful build for iOS 12–14. Device testing required." = "Experimentelle Rootful-Version für iOS 12–14. Gerätetests erforderlich.";
+
+"Preview & Profiles" = "Vorschau & Profile";
+
+"Preview" = "Vorschau";
+
+"Favorites" = "Favoriten";
+
+"Double-tap to switch" = "Mit Doppeltippen wechseln";
+
+"Choose at least two packs. Double-tap the clock digits to switch. Long-press remains available for wallpaper editing." = "Wähle mindestens zwei Pakete. Tippe doppelt auf die Uhrziffern zum Wechseln. Langes Drücken bleibt zum Bearbeiten des Hintergrunds verfügbar.";
+
+"Stable releases / Downgrade" = "Stabile Versionen / Downgrade";
+
+"Draft only. Apply sends these settings to the Lock Screen." = "Nur ein Entwurf. Anwenden überträgt die Einstellungen auf den Sperrbildschirm.";
+
+"Apply" = "Anwenden";
+
+"Applied" = "Angewendet";
+
+"Appearance applied. The enabled switch was not changed." = "Darstellung angewendet. Der Aktivierungsschalter wurde nicht geändert.";
+
+"Missing pack. Install it or choose another pack." = "Paket fehlt. Installiere es oder wähle ein anderes.";
+
+"Preview unavailable. Try a static pack." = "Vorschau nicht verfügbar. Versuche ein statisches Paket.";
+
+"Could not save settings." = "Einstellungen konnten nicht gespeichert werden.";
+
+"Error" = "Fehler";
+
+"Configure clock" = "Uhr konfigurieren";
+
+"Advanced" = "Erweitert";
+
+"About & Support" = "Info & Unterstützung";
+
+"Appearance" = "Darstellung";
+
+"Layout" = "Anordnung";
+
+"The Lock Screen will restart. Your settings will be kept." = "Der Sperrbildschirm wird neu gestartet. Deine Einstellungen bleiben erhalten.";
+
+"Date" = "Datum";
+
+"Date font" = "Datumsschrift";
+
+"Date size" = "Datumsgröße";
+
+"Date weight" = "Schriftstärke des Datums";
+
+"Rounded" = "Abgerundet";
+
+"Serif" = "Mit Serifen";
+
+"Monospaced" = "Nichtproportional";
+
+"Regular" = "Normal";
+
+"Medium" = "Mittel";
+
+"Semibold" = "Halbfett";
+
+"Bold" = "Fett";
+
+"Choose System for font and weight, and 100% size, to restore the original date appearance." = "Wähle System für Schrift und Stärke sowie 100 % Größe, um das ursprüngliche Datum wiederherzustellen.";

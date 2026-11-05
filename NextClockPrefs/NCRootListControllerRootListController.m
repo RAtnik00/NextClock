@@ -6,6 +6,8 @@
 #import "../Shared/NCZip.h"
 #import "NCLocalization.h"
 #import "../Shared/NCVersion.h"
+#import "NCProController.h"
+#import "../Shared/NCFavorites.h"
 
 static NSString *NCText(NSString *key) {
     return NCLocalizedString([NSBundle bundleForClass:NCRootListControllerRootListController.class], key);
@@ -34,6 +36,11 @@ static NSString *NCText(NSString *key) {
             row.name = [NSString stringWithFormat:NCText(@"Version: %@"), NC_VERSION];
         else if (row.name.length) row.name = NCText(row.name);
         NSString *footer = [row propertyForKey:@"footerText"];
+#ifdef NC_LEGACY_BUILD
+        if (([name isEqual:@"About"] && footer.length) ||
+            [footer isEqual:@"iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak."])
+            footer = @"Experimental rootful build for iOS 12–14. Device testing required.";
+#endif
         if (footer.length) [row setProperty:NCText(footer) forKey:@"footerText"];
         NSString *key = [row propertyForKey:@"key"];
         for (NSDictionary *entry in source[@"items"]) {
@@ -64,6 +71,9 @@ static NSString *NCText(NSString *key) {
 - (NSArray *)specifiers {
     if (_specifiers) return _specifiers;
     NSString *page=[self.specifier propertyForKey:@"nextClockPage"];
+    if ([page isEqual:@"Advanced"]) {
+        _specifiers=[self nc_loadSpecifiers:@"Advanced"]; return _specifiers;
+    }
     if ([page isEqual:@"About"]) {
         _specifiers=[self nc_loadSpecifiers:@"About"]; return _specifiers;
     }
@@ -83,6 +93,19 @@ static NSString *NCText(NSString *key) {
         _specifiers=items; return _specifiers;
     }
     NSArray *packs=NCAllPacks();
+    if ([page isEqual:@"Favorites"]) {
+        self.title=NCText(@"Favorites");
+        NSMutableArray *items=[NSMutableArray array];
+        PSSpecifier *group=[PSSpecifier groupSpecifierWithName:NCText(@"Favorites")];
+        [group setProperty:NCText(@"Choose at least two packs. Double-tap the clock digits to switch. Long-press remains available for wallpaper editing.") forKey:@"footerText"];
+        [items addObject:group];
+        for (NSDictionary *pack in [@[@{@"id":@"doubleTapFavorites",@"Name":NCText(@"Double-tap to switch")}] arrayByAddingObjectsFromArray:packs]) {
+            PSSpecifier *row=[PSSpecifier preferenceSpecifierNamed:pack[@"Name"] target:self
+                set:@selector(setFavorite:specifier:) get:@selector(readFavorite:) detail:Nil cell:PSSwitchCell edit:Nil];
+            [row setProperty:pack[@"id"] forKey:@"favoriteID"]; [items addObject:row];
+        }
+        _specifiers=items; return _specifiers;
+    }
     if ([page isEqual:@"ManagePacks"]) {
         NSMutableArray *items=[NSMutableArray array];
         [items addObject:[PSSpecifier groupSpecifierWithName:NCText(@"INSTALLED")]];
@@ -95,7 +118,15 @@ static NSString *NCText(NSString *key) {
         NSArray *imports=[self nc_loadSpecifiers:@"ManagePacks"];
         if (imports) [items addObjectsFromArray:imports]; _specifiers=items; return _specifiers;
     }
+#ifdef NC_LEGACY_BUILD
+    _specifiers=[self nc_loadSpecifiers:@"LegacyRoot"];
+#else
     _specifiers=[self nc_loadSpecifiers:@"Root"];
+#endif
+#ifdef NC_PRO_BUILD
+    self.title=@"NextClock Pro";
+    for (PSSpecifier *row in _specifiers) if ([row.name isEqual:NCText(@"Configure clock")]) row.name=NCText(@"Preview & Profiles");
+#endif
     NSMutableArray *values=[NSMutableArray array], *titles=[NSMutableArray array];
     for (NSDictionary *pack in packs) { [values addObject:pack[@"id"]]; [titles addObject:pack[@"Name"]]; }
     for (PSSpecifier *row in _specifiers) if ([[row propertyForKey:@"key"] isEqual:@"pack"]) {
@@ -104,6 +135,36 @@ static NSString *NCText(NSString *key) {
     return _specifiers;
 }
 - (void)refreshNextClockSettings { _specifiers=nil; [self reloadSpecifiers]; }
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self refreshNextClockSettings];
+}
+- (void)openProPreview {
+    [self.navigationController pushViewController:[NCProController new] animated:YES];
+}
+- (void)openStableReleases {
+    [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"https://ratnik00.github.io/repo/releases/"] options:@{} completionHandler:nil];
+}
+- (id)readFavorite:(PSSpecifier *)specifier {
+    CFPreferencesAppSynchronize(CFSTR("com.ratnik00.nextclock"));
+    NSString *identifier=[specifier propertyForKey:@"favoriteID"];
+    NSString *key=[identifier isEqual:@"doubleTapFavorites"] ? identifier : @"favoritePacks";
+    id value=CFBridgingRelease(CFPreferencesCopyAppValue((__bridge CFStringRef)key,CFSTR("com.ratnik00.nextclock")));
+    return [key isEqual:@"favoritePacks"] ? @([NCFavoriteIdentifiers(value,NCAllPacks()) containsObject:identifier]) : @([value isKindOfClass:NSNumber.class] && [value boolValue]);
+}
+- (void)setFavorite:(NSNumber *)on specifier:(PSSpecifier *)specifier {
+    CFStringRef domain=CFSTR("com.ratnik00.nextclock"); CFPreferencesAppSynchronize(domain);
+    NSString *identifier=[specifier propertyForKey:@"favoriteID"];
+    if ([identifier isEqual:@"doubleTapFavorites"]) CFPreferencesSetAppValue(CFSTR("doubleTapFavorites"),(__bridge CFNumberRef)on,domain);
+    else {
+        id stored=CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("favoritePacks"),domain));
+        NSMutableArray *values=[NCFavoriteIdentifiers(stored,NCAllPacks()) mutableCopy];
+        [values removeObject:identifier]; if (on.boolValue && NCValidIdentifier(identifier)) [values addObject:identifier];
+        CFPreferencesSetAppValue(CFSTR("favoritePacks"),(__bridge CFArrayRef)values,domain);
+    }
+    CFPreferencesAppSynchronize(domain);
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.ratnik00.nextclock/preferenceschanged"),NULL,NULL,YES);
+}
 - (void)refreshAllPages {
     NSArray *pages = [self.navigationController.viewControllers copy];
     for (UIViewController *page in pages)
@@ -145,10 +206,28 @@ static NSString *NCText(NSString *key) {
 }
 - (void)importPack {
     if (self.importing || self.presentedViewController) return;
-    UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc]
-        // Some file providers give .nextclock an unregistered UTI unrelated to Data.
-        // Accept any item here; the bounded importer still validates its contents.
-        initForOpeningContentTypes:@[UTTypeFolder,UTTypeItem] asCopy:NO];
+    UIDocumentPickerViewController *picker;
+    // Accept unregistered .nextclock types; the importer validates the contents.
+    if (@available(iOS 14.0, *)) {
+        picker=[[UIDocumentPickerViewController alloc]
+            initForOpeningContentTypes:@[UTTypeFolder,UTTypeItem] asCopy:NO];
+    }
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 140000
+    else {
+        // Folder selection arrived in iOS 13. iOS 12 imports ZIP/.nextclock files.
+        NSArray *types;
+        UIDocumentPickerMode mode;
+        if (@available(iOS 13.0, *)) {
+            types=@[@"public.folder", @"public.item"];
+            mode=UIDocumentPickerModeOpen;
+        } else {
+            types=@[@"public.item"];
+            mode=UIDocumentPickerModeImport;
+        }
+        picker=[[UIDocumentPickerViewController alloc]
+            initWithDocumentTypes:types inMode:mode];
+    }
+#endif
     picker.delegate=self; picker.allowsMultipleSelection=NO;
     [self presentViewController:picker animated:YES completion:nil];
 }
@@ -238,7 +317,7 @@ static NSString *NCText(NSString *key) {
     [alert addAction:[UIAlertAction actionWithTitle:NCText(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:NCText(@"Reset") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
         CFStringRef domain=CFSTR("com.ratnik00.nextclock");
-        for (NSString *key in @[@"enabled",@"pack",@"animationStyle",@"animationSpeed",@"staticInLowPower",@"clockScale",@"digitSpacing",@"verticalOffset",@"timeFormat",@"hideDate", @"showSeconds",@"colorFilterEnabled",@"tintColor"])
+        for (NSString *key in @[@"dateFontDesign",@"dateFontScale",@"dateFontWeight",@"favoritePacks",@"doubleTapFavorites",@"enabled",@"pack",@"animationStyle",@"animationSpeed",@"staticInLowPower",@"clockScale",@"digitSpacing",@"verticalOffset",@"timeFormat",@"hideDate", @"showSeconds",@"colorFilterEnabled",@"tintColor"])
             CFPreferencesSetAppValue((__bridge CFStringRef)key,NULL,domain);
         CFPreferencesAppSynchronize(domain);
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.ratnik00.nextclock/preferenceschanged"),NULL,NULL,YES);
@@ -258,6 +337,11 @@ static NSString *NCText(NSString *key) {
     }];
 }
 - (void)restartSpringBoard {
-    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.ratnik00.nextclock/respring"),NULL,NULL,YES);
+    UIAlertController *alert=[UIAlertController alertControllerWithTitle:NCText(@"Restart SpringBoard") message:NCText(@"The Lock Screen will restart. Your settings will be kept.") preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:NCText(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:NCText(@"Restart SpringBoard") style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.ratnik00.nextclock/respring"),NULL,NULL,YES);
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 @end

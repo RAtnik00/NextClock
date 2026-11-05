@@ -81,3 +81,69 @@
 // Halloween edition
 "🎃 Happy Halloween!" = "🎃 Wesołego Halloween!";
 "Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Wypróbuj animowany pakiet Halloween. Wybierz Halloween w pozycji „Pakiet”.";
+
+"Experimental rootful build for iOS 12–14. Device testing required." = "Eksperymentalna wersja rootful dla iOS 12–14. Wymaga testów na urządzeniu.";
+
+"Preview & Profiles" = "Podgląd i profile";
+
+"Preview" = "Podgląd";
+
+"Favorites" = "Ulubione";
+
+"Double-tap to switch" = "Zmieniaj podwójnym stuknięciem";
+
+"Choose at least two packs. Double-tap the clock digits to switch. Long-press remains available for wallpaper editing." = "Wybierz co najmniej dwa zestawy. Stuknij dwukrotnie cyfry zegara, aby zmienić zestaw. Przytrzymanie nadal umożliwia edycję tapety.";
+
+"Stable releases / Downgrade" = "Wersje stabilne / Powrót";
+
+"Draft only. Apply sends these settings to the Lock Screen." = "To wersja robocza. Zastosuj przenosi ustawienia na ekran blokady.";
+
+"Apply" = "Zastosuj";
+
+"Applied" = "Zastosowano";
+
+"Appearance applied. The enabled switch was not changed." = "Wygląd zastosowany. Przełącznik włączenia nie został zmieniony.";
+
+"Missing pack. Install it or choose another pack." = "Brak zestawu. Zainstaluj go lub wybierz inny.";
+
+"Preview unavailable. Try a static pack." = "Podgląd niedostępny. Spróbuj zestawu statycznego.";
+
+"Could not save settings." = "Nie udało się zapisać ustawień.";
+
+"Error" = "Błąd";
+
+"Configure clock" = "Dostosuj zegar";
+
+"Advanced" = "Zaawansowane";
+
+"About & Support" = "Informacje i wsparcie";
+
+"Appearance" = "Wygląd";
+
+"Layout" = "Układ";
+
+"The Lock Screen will restart. Your settings will be kept." = "Ekran blokady zostanie uruchomiony ponownie. Ustawienia zostaną zachowane.";
+
+"Date" = "Data";
+
+"Date font" = "Czcionka daty";
+
+"Date size" = "Rozmiar daty";
+
+"Date weight" = "Grubość czcionki daty";
+
+"Rounded" = "Zaokrąglona";
+
+"Serif" = "Szeryfowa";
+
+"Monospaced" = "O stałej szerokości";
+
+"Regular" = "Zwykła";
+
+"Medium" = "Średnia";
+
+"Semibold" = "Półgruba";
+
+"Bold" = "Gruba";
+
+"Choose System for font and weight, and 100% size, to restore the original date appearance." = "Wybierz System dla czcionki i grubości oraz rozmiar 100%, aby przywrócić oryginalny wygląd daty.";

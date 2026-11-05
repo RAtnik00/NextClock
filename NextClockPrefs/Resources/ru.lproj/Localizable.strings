@@ -83,3 +83,69 @@
 // Halloween edition
 "🎃 Happy Halloween!" = "🎃 Всех с Хэллоуином!";
 "Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Попробуйте анимированные часы Halloween. Выберите Halloween в пункте «Набор».";
+
+"Experimental rootful build for iOS 12–14. Device testing required." = "Экспериментальная rootful-сборка для iOS 12–14. Нужна проверка на устройстве.";
+
+"Preview & Profiles" = "Предпросмотр и профили";
+
+"Preview" = "Предпросмотр";
+
+"Favorites" = "Избранные";
+
+"Double-tap to switch" = "Переключать двойным нажатием";
+
+"Choose at least two packs. Double-tap the clock digits to switch. Long-press remains available for wallpaper editing." = "Выберите минимум два набора. Дважды нажмите на цифры часов для переключения. Долгое нажатие остаётся доступным для редактирования обоев.";
+
+"Stable releases / Downgrade" = "Стабильные версии / Откат";
+
+"Draft only. Apply sends these settings to the Lock Screen." = "Это черновик. Нажмите «Применить», чтобы изменить экран блокировки.";
+
+"Apply" = "Применить";
+
+"Applied" = "Применено";
+
+"Appearance applied. The enabled switch was not changed." = "Оформление применено. Переключатель включения твика не изменён.";
+
+"Missing pack. Install it or choose another pack." = "Набор не найден. Установите его или выберите другой.";
+
+"Preview unavailable. Try a static pack." = "Предпросмотр недоступен. Попробуйте статичный набор.";
+
+"Could not save settings." = "Не удалось сохранить настройки.";
+
+"Error" = "Ошибка";
+
+"Configure clock" = "Настроить часы";
+
+"Advanced" = "Дополнительно";
+
+"About & Support" = "О твике и поддержка";
+
+"Appearance" = "Оформление";
+
+"Layout" = "Расположение";
+
+"The Lock Screen will restart. Your settings will be kept." = "Экран блокировки будет перезапущен. Ваши настройки сохранятся.";
+
+"Date" = "Дата";
+
+"Date font" = "Шрифт даты";
+
+"Date size" = "Размер даты";
+
+"Date weight" = "Насыщенность даты";
+
+"Rounded" = "Скруглённый";
+
+"Serif" = "С засечками";
+
+"Monospaced" = "Моноширинный";
+
+"Regular" = "Обычный";
+
+"Medium" = "Средний";
+
+"Semibold" = "Полужирный";
+
+"Bold" = "Жирный";
+
+"Choose System for font and weight, and 100% size, to restore the original date appearance." = "Чтобы вернуть исходный вид даты, выберите «Системный» для шрифта и насыщенности и размер 100%.";

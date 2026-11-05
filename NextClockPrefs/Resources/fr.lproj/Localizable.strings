@@ -83,3 +83,69 @@
 // Halloween edition
 "🎃 Happy Halloween!" = "🎃 Joyeux Halloween !";
 "Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Fêtez Halloween avec le pack animé Halloween. Sélectionnez Halloween dans Pack.";
+
+"Experimental rootful build for iOS 12–14. Device testing required." = "Version rootful expérimentale pour iOS 12–14. Tests sur appareil nécessaires.";
+
+"Preview & Profiles" = "Aperçu et profils";
+
+"Preview" = "Aperçu";
+
+"Favorites" = "Favoris";
+
+"Double-tap to switch" = "Changer par double toucher";
+
+"Choose at least two packs. Double-tap the clock digits to switch. Long-press remains available for wallpaper editing." = "Choisissez au moins deux packs. Touchez deux fois les chiffres pour changer. Un appui long permet toujours de modifier le fond d’écran.";
+
+"Stable releases / Downgrade" = "Versions stables / Rétrogradation";
+
+"Draft only. Apply sends these settings to the Lock Screen." = "Brouillon uniquement. Appliquer transfère ces réglages à l’écran verrouillé.";
+
+"Apply" = "Appliquer";
+
+"Applied" = "Appliqué";
+
+"Appearance applied. The enabled switch was not changed." = "Apparence appliquée. Le bouton d’activation n’a pas été modifié.";
+
+"Missing pack. Install it or choose another pack." = "Pack manquant. Installez-le ou choisissez-en un autre.";
+
+"Preview unavailable. Try a static pack." = "Aperçu indisponible. Essayez un pack statique.";
+
+"Could not save settings." = "Impossible d’enregistrer les réglages.";
+
+"Error" = "Erreur";
+
+"Configure clock" = "Configurer l’horloge";
+
+"Advanced" = "Avancé";
+
+"About & Support" = "À propos et assistance";
+
+"Appearance" = "Apparence";
+
+"Layout" = "Disposition";
+
+"The Lock Screen will restart. Your settings will be kept." = "L’écran verrouillé va redémarrer. Vos réglages seront conservés.";
+
+"Date" = "Date";
+
+"Date font" = "Police de la date";
+
+"Date size" = "Taille de la date";
+
+"Date weight" = "Graisse de la date";
+
+"Rounded" = "Arrondie";
+
+"Serif" = "Avec empattements";
+
+"Monospaced" = "À chasse fixe";
+
+"Regular" = "Normale";
+
+"Medium" = "Moyenne";
+
+"Semibold" = "Demi-grasse";
+
+"Bold" = "Grasse";
+
+"Choose System for font and weight, and 100% size, to restore the original date appearance." = "Choisissez Système pour la police et la graisse, et une taille de 100 % pour rétablir l’apparence d’origine de la date.";
