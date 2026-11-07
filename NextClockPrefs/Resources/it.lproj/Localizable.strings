@@ -149,3 +149,11 @@
 "Bold" = "Grassetto";
 
 "Choose System for font and weight, and 100% size, to restore the original date appearance." = "Scegli Sistema per carattere e spessore e dimensione 100% per ripristinare l’aspetto originale della data.";
+
+"Lock Screen wallpaper" = "Sfondo della schermata di blocco";
+"Apply to current Lock Screen" = "Applica alla schermata di blocco attuale";
+"Use global pack on this Lock Screen" = "Usa il pacchetto predefinito su questa schermata";
+"Could not read the selected Lock Screen." = "Impossibile rilevare la schermata di blocco attuale.";
+"Remove a wallpaper pack assignment before adding another." = "Rimuovi un’associazione a uno sfondo prima di aggiungerne un’altra.";
+"Pack saved for the current Lock Screen." = "Pacchetto salvato per la schermata di blocco attuale.";
+"This Lock Screen uses the global pack." = "Questa schermata di blocco usa il pacchetto predefinito.";

@@ -317,7 +317,7 @@ static NSString *NCText(NSString *key) {
     [alert addAction:[UIAlertAction actionWithTitle:NCText(@"Cancel") style:UIAlertActionStyleCancel handler:nil]];
     [alert addAction:[UIAlertAction actionWithTitle:NCText(@"Reset") style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
         CFStringRef domain=CFSTR("com.ratnik00.nextclock");
-        for (NSString *key in @[@"dateFontDesign",@"dateFontScale",@"dateFontWeight",@"favoritePacks",@"doubleTapFavorites",@"enabled",@"pack",@"animationStyle",@"animationSpeed",@"staticInLowPower",@"clockScale",@"digitSpacing",@"verticalOffset",@"timeFormat",@"hideDate", @"showSeconds",@"colorFilterEnabled",@"tintColor"])
+        for (NSString *key in @[@"wallpaperPacks",@"dateFontDesign",@"dateFontScale",@"dateFontWeight",@"favoritePacks",@"doubleTapFavorites",@"enabled",@"pack",@"animationStyle",@"animationSpeed",@"staticInLowPower",@"clockScale",@"digitSpacing",@"verticalOffset",@"timeFormat",@"hideDate", @"showSeconds",@"colorFilterEnabled",@"tintColor"])
             CFPreferencesSetAppValue((__bridge CFStringRef)key,NULL,domain);
         CFPreferencesAppSynchronize(domain);
         CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.ratnik00.nextclock/preferenceschanged"),NULL,NULL,YES);

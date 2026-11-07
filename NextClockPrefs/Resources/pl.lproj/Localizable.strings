@@ -147,3 +147,11 @@
 "Bold" = "Gruba";
 
 "Choose System for font and weight, and 100% size, to restore the original date appearance." = "Wybierz System dla czcionki i grubości oraz rozmiar 100%, aby przywrócić oryginalny wygląd daty.";
+
+"Lock Screen wallpaper" = "Tapeta ekranu blokady";
+"Apply to current Lock Screen" = "Zastosuj na bieżącym ekranie blokady";
+"Use global pack on this Lock Screen" = "Użyj domyślnego pakietu na tym ekranie";
+"Could not read the selected Lock Screen." = "Nie można odczytać bieżącego ekranu blokady.";
+"Remove a wallpaper pack assignment before adding another." = "Usuń jedno przypisanie pakietu do tapety przed dodaniem kolejnego.";
+"Pack saved for the current Lock Screen." = "Pakiet zapisano dla bieżącego ekranu blokady.";
+"This Lock Screen uses the global pack." = "Ten ekran blokady używa domyślnego pakietu.";

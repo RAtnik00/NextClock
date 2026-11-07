@@ -147,3 +147,11 @@
 "Bold" = "Fett";
 
 "Choose System for font and weight, and 100% size, to restore the original date appearance." = "Wähle System für Schrift und Stärke sowie 100 % Größe, um das ursprüngliche Datum wiederherzustellen.";
+
+"Lock Screen wallpaper" = "Sperrbildschirmhintergrund";
+"Apply to current Lock Screen" = "Auf aktuellen Sperrbildschirm anwenden";
+"Use global pack on this Lock Screen" = "Standardpaket auf diesem Sperrbildschirm verwenden";
+"Could not read the selected Lock Screen." = "Der aktuelle Sperrbildschirm konnte nicht ermittelt werden.";
+"Remove a wallpaper pack assignment before adding another." = "Entferne eine bestehende Paketzuteilung, bevor du eine neue hinzufügst.";
+"Pack saved for the current Lock Screen." = "Paket für den aktuellen Sperrbildschirm gespeichert.";
+"This Lock Screen uses the global pack." = "Dieser Sperrbildschirm verwendet das Standardpaket.";

@@ -4,6 +4,10 @@
 
 Custom lock screen clocks for rootless iOS 15, with an experimental iOS 16–17 beta.
 
+## 1.2.0 beta 7
+
+Choose a pack in Configure clock and apply it to the current Lock Screen. Use the global pack action to remove an assignment. The new controls support all nine languages. Wallpaper switching was tested on iPhone X with iOS 16.7.5.
+
 ## 1.2.0 beta 6
 
 Charging visibility and wallpaper-editor rendering improvements. Developer-tested on iPhone X / iOS 16.7.5 and iPhone 7 Plus / iOS 15.8.8. Gallery thumbnails remain native; no per-wallpaper pack selection or new iOS 18 support. See [IOS16-REWORK.md](IOS16-REWORK.md).

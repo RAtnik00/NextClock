@@ -6,5 +6,5 @@
 #elif defined(NC_LEGACY_BUILD)
 #define NC_VERSION @"1.1.1~legacy1"
 #else
-#define NC_VERSION @"1.2.0~beta6"
+#define NC_VERSION @"1.2.0~beta7"
 #endif

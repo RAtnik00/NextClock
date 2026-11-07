@@ -149,3 +149,11 @@
 "Bold" = "Bold";
 
 "Choose System for font and weight, and 100% size, to restore the original date appearance." = "Choose System for font and weight, and 100% size, to restore the original date appearance.";
+
+"Lock Screen wallpaper" = "Lock Screen wallpaper";
+"Apply to current Lock Screen" = "Apply to current Lock Screen";
+"Use global pack on this Lock Screen" = "Use global pack on this Lock Screen";
+"Could not read the selected Lock Screen." = "Could not read the selected Lock Screen.";
+"Remove a wallpaper pack assignment before adding another." = "Remove a wallpaper pack assignment before adding another.";
+"Pack saved for the current Lock Screen." = "Pack saved for the current Lock Screen.";
+"This Lock Screen uses the global pack." = "This Lock Screen uses the global pack.";

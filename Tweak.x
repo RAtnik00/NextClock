@@ -1,3 +1,5 @@
+#import <CommonCrypto/CommonDigest.h>
+#import <unistd.h>
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <QuartzCore/QuartzCore.h>
@@ -7,6 +9,7 @@
 #import <stdlib.h>
 #import <math.h>
 #import "Shared/NCPacks.h"
+#import "Shared/NCWallpaperPacks.h"
 #import "Shared/NCVersion.h"
 #import "Shared/NCLayoutSafety.h"
 #import "Shared/NCFavorites.h"
@@ -26,6 +29,7 @@ static CGFloat NCScale = 1, NCSpacing = -2, NCOffset = 0, NCSpeed = 1;
 static NSString *NCPack = @"Anime", *NCFormat = @"system", *NCColorHex = @"#FF9500";
 static NSHashTable<UIView *> *NCViews;
 static NSCache *NCImages;
+static NSDictionary *NCWallpaperBindings;
 static NSUInteger NCGeneration = 1;
 static NSString *NCResolvedFolder;
 static BOOL NCResolvedWanted;
@@ -93,6 +97,7 @@ static void NCLoadSettings(void) {
     NCSpacing = NCFloat(@"digitSpacing", -2, -25, 40);
     NCOffset = NCFloat(@"verticalOffset", 0, -120, 120);
     NCSpeed = NCFloat(@"animationSpeed", 1, .25, 3);
+    NCWallpaperBindings = NCWallpaperPackBindings();
     NCPack = NCString(@"pack", @"Anime"); if (!NCValidIdentifier(NCPack)) NCPack = @"Anime";
     NCFormat = NCString(@"timeFormat", @"system");
     if (![@[@"system", @"12hour", @"24hour"] containsObject:NCFormat]) NCFormat = @"system";
@@ -201,10 +206,12 @@ static void NCSetGlyph(UIImageView *view, NCGlyph *glyph, BOOL animate) {
     animation.beginTime = [view.layer convertTime:NCEpoch fromLayer:nil];
     [view.layer addAnimation:animation forKey:@"NextClock.frames"];
 }
-static NSString *NCFolder(BOOL wanted) {
-    if (NCResolvedFolder && NCResolvedWanted == wanted) return NCResolvedFolder;
+static NSString *NCFolder(BOOL wanted, NSString *pack) {
+    static NSString *resolvedPack;
+    if (NCResolvedFolder && NCResolvedWanted == wanted && [resolvedPack isEqual:pack]) return NCResolvedFolder;
     NSArray *variants = wanted ? @[@"animated", @"static"] : @[@"static", @"animated"];
-    NSArray *ids = [NCPack isEqual:@"Anime"] ? @[@"Anime"] : @[NCPack, @"Anime"];
+    NSArray *ids = [[NSOrderedSet orderedSetWithArray:@[pack, NCPack, @"Anime"]] array];
+    resolvedPack = pack;
     NCResolvedFolder = nil; NCResolvedWanted = wanted;
     for (NSString *identifier in ids) {
         for (NSString *root in @[NCUserRoot(), NCBuiltinRoot()]) {
@@ -640,8 +647,19 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
         ? NSDate.date
         : providedDate;
 
+    NSString *pack = NCPack;
+    if (modern && NCWallpaperBindings.count) {
+        static NSString *selected;
+        static NSTimeInterval lastRead;
+        NSTimeInterval now = NSProcessInfo.processInfo.systemUptime;
+        if (!lastRead || now - lastRead >= 0.25) {
+            selected = NCSelectedWallpaper();
+            lastRead = now;
+        }
+        if (selected) pack = NCWallpaperBindings[selected] ?: NCPack;
+    }
     NSString *time = NCTime(date ?: NSDate.date);
-    NSString *signature = [NSString stringWithFormat:@"%@|%@|%@|%lu|%d", time,
+    NSString *signature = [NSString stringWithFormat:@"%@|%@|%@|%@|%lu|%d", pack, time,
         NSStringFromCGRect(timeLabel.frame), NSStringFromCGRect(self.bounds), (unsigned long)NCGeneration, wanted];
     if (state && [state.signature isEqual:signature] && !state.overlay.hidden) {
         // Core Animation can discard animations while the lock screen is detached.
@@ -653,7 +671,7 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
         NCPlaceLegacyDate(self, dateLabel, state);
         return;
     }
-    NSString *folder = NCFolder(wanted);
+    NSString *folder = NCFolder(wanted, pack);
     NSMutableArray<NCGlyph *> *glyphs = [NSMutableArray array];
     NSMutableDictionary<NSString *, NCGlyph *> *loaded = [NSMutableDictionary dictionary];
     // Bound the decoded frames retained by one clock row, including animated packs.
@@ -1145,6 +1163,75 @@ static void NCModernReleaseClock(UIView *host, UIView *time) {
 - (UIView *)transientSubtitleView;
 @end
 
+#ifdef NC_WALLPAPER_PROBE
+// Local probe for the per-wallpaper feature. Follow only explicitly named,
+// zero-argument object getters and record UUID fingerprints, never raw IDs.
+static void NCProbeWallpaperIdentity(UIView *host) {
+    static CFTimeInterval lastProbe;
+    CFTimeInterval now = CACurrentMediaTime();
+    if (now - lastProbe < 1) return;
+    lastProbe = now;
+    NSMutableArray *objects = [NSMutableArray array];
+    NSMutableArray<NSString *> *paths = [NSMutableArray array];
+    NSHashTable *seen = [NSHashTable hashTableWithOptions:NSPointerFunctionsObjectPointerPersonality];
+    for (UIResponder *item = host; item && objects.count < 32; item = item.nextResponder) {
+        [objects addObject:item];
+        [paths addObject:NSStringFromClass(item.class)];
+        [seen addObject:item];
+    }
+    NSMutableOrderedSet<NSString *> *results = [NSMutableOrderedSet orderedSet];
+    NSArray *links = @[@"wallpaperController", @"wallpaperViewController",
+        @"posterController", @"activePosterConfiguration", @"currentPosterConfiguration",
+        @"posterConfiguration", @"wallpaperConfiguration", @"configuration", @"descriptor"];
+    for (NSUInteger i = 0; i < objects.count && results.count < 32; i++) {
+        id object = objects[i];
+        NSString *path = paths[i];
+        Class cls = object_getClass(object);
+        if (i >= 32 || ![object isKindOfClass:UIResponder.class]) {
+            for (NSString *name in @[@"uniqueIdentifier", @"identifier", @"UUID", @"configurationIdentifier"]) {
+                SEL selector = NSSelectorFromString(name);
+                if (!NCMethodHasABI(cls, selector, "@", @[])) continue;
+                id (*read)(id, SEL) = (id (*)(id, SEL))[object methodForSelector:selector];
+                id value = read(object, selector);
+                NSUUID *uuid = [value isKindOfClass:NSUUID.class] ? value :
+                    ([value isKindOfClass:NSString.class] && [value length] == 36
+                     ? [[NSUUID alloc] initWithUUIDString:value] : nil);
+                if (!uuid) continue;
+                const char *bytes = uuid.UUIDString.UTF8String;
+                unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+                CC_SHA256(bytes, (CC_LONG)strlen(bytes), digest);
+                NSMutableString *fingerprint = [NSMutableString string];
+                for (NSUInteger n = 0; n < 12; n++) [fingerprint appendFormat:@"%02x", digest[n]];
+                [results addObject:[NSString stringWithFormat:@"%@.%@ = %@", path, name, fingerprint]];
+            }
+        }
+        for (NSString *name in links) {
+            if (objects.count >= 48) break;
+            SEL selector = NSSelectorFromString(name);
+            if (!NCMethodHasABI(cls, selector, "@", @[])) continue;
+            id (*read)(id, SEL) = (id (*)(id, SEL))[object methodForSelector:selector];
+            id value = read(object, selector);
+            if (!value || [seen containsObject:value]) continue;
+            NSString *className = NSStringFromClass(object_getClass(value));
+            if (![className containsString:@"Poster"] && ![className containsString:@"Wallpaper"]) continue;
+            [seen addObject:value];
+            [objects addObject:value];
+            [paths addObject:[NSString stringWithFormat:@"%@.%@ (%@)", path, name, className]];
+        }
+    }
+    NSString *sample = results.count ? [[results array] componentsJoinedByString:@"\n"] : @"No UUID candidate found";
+    static NSString *previous;
+    if ([sample isEqualToString:previous]) return;
+    NSString *file = @"/var/mobile/Library/NextClock-wallpaper-probe.txt";
+    NSString *history = [NSString stringWithContentsOfFile:file encoding:NSUTF8StringEncoding error:nil] ?: @"";
+    if (history.length > 24000) history = @"";
+    NSString *entry = [NSString stringWithFormat:@"%@\n--- %@ | PID %d | iOS %@ ---\n%@\n",
+        history, NSDate.date, getpid(), UIDevice.currentDevice.systemVersion, sample];
+    if ([entry writeToFile:file atomically:YES encoding:NSUTF8StringEncoding error:nil]) previous = sample;
+}
+
+#endif
+
 static void NCCompatibilitySnapshot(UIView *host) {
     static NSMutableDictionary<NSString *,NSString *> *snapshots;
     static dispatch_queue_t writer;
@@ -1196,6 +1283,9 @@ static void NCCompatibilitySnapshot(UIView *host) {
         NCModernReleaseClock(self,self.timeView);
         return;
     }
+#ifdef NC_WALLPAPER_PROBE
+    if (!NCModernUsesEditingLayout(self)) NCProbeWallpaperIdentity(self);
+#endif
     UIView *time = self.timeView;
     if (priorTime!=time) NCModernReleaseTime(priorTime);
     if (![time isKindOfClass:UIView.class] || ![time isDescendantOfView:self]) {

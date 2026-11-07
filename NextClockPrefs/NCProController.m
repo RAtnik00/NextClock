@@ -1,3 +1,4 @@
+#import "../Shared/NCWallpaperPacks.h"
 #import "NCProController.h"
 #import <QuartzCore/QuartzCore.h>
 #import "../Shared/NCProfiles.h"
@@ -250,6 +251,15 @@ static NSDictionary *NCCurrentAppearance(void) {
 #else
     self.sections=NCEditorSections(NO);
 #endif
+    if (@available(iOS 16.0, *)) {
+        self.sections = [self.sections arrayByAddingObject:@{
+            @"title": @"Lock Screen wallpaper",
+            @"rows": @[
+                NCEditorRow(@"applyWallpaperPack", @"Apply to current Lock Screen", @"action"),
+                NCEditorRow(@"clearWallpaperPack", @"Use global pack on this Lock Screen", @"action")
+            ]
+        }];
+    }
     self.appliedBaseline=NCCurrentAppearance(); self.draft=[self.appliedBaseline mutableCopy];
     self.tableView.rowHeight=UITableViewAutomaticDimension; self.tableView.estimatedRowHeight=64;
     self.canvas=[NCPreviewCanvas new]; [self.canvas.heightAnchor constraintEqualToConstant:300].active=YES; self.canvas.settings=self.draft;
@@ -331,11 +341,14 @@ static NSDictionary *NCCurrentAppearance(void) {
         else if ([key isEqual:@"dateFontDesign"] || [key isEqual:@"dateFontWeight"]) [self chooseDateOption:key];
         else [self chooseFormat];
     }
-#ifdef NC_PRO_BUILD
     else if ([row[@"kind"] isEqual:@"action"]) {
-        if ([key isEqual:@"saveProfile"]) [self saveProfile]; else [self showProfiles];
-    }
+        if ([key isEqual:@"applyWallpaperPack"]) [self saveWallpaperPack:YES];
+        else if ([key isEqual:@"clearWallpaperPack"]) [self saveWallpaperPack:NO];
+#ifdef NC_PRO_BUILD
+        else if ([key isEqual:@"saveProfile"]) [self saveProfile];
+        else if ([key isEqual:@"showProfiles"]) [self showProfiles];
 #endif
+    }
 }
 - (void)tableView:(UITableView *)table willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)index {
     if (index.section==0 && index.row==0) {
@@ -392,6 +405,36 @@ static NSDictionary *NCCurrentAppearance(void) {
     [self presentViewController:alert animated:YES completion:nil];
 }
 - (BOOL)packExists:(NSString *)identifier { for (NSDictionary *pack in NCAllPacks()) if ([pack[@"id"] isEqual:identifier]) return YES; return NO; }
+- (void)saveWallpaperPack:(BOOL)assign {
+    NSString *identifier = NCSelectedWallpaper();
+    if (!identifier) {
+        [self message:@"Could not read the selected Lock Screen." title:@"Error"];
+        return;
+    }
+    NSString *pack = self.draft[@"pack"];
+    if (assign && ![self packExists:pack]) {
+        [self message:@"Missing pack. Install it or choose another pack." title:@"Error"];
+        return;
+    }
+    CFStringRef domain = CFSTR("com.ratnik00.nextclock");
+    CFPreferencesAppSynchronize(domain);
+    NSMutableDictionary *bindings = NCWallpaperPackBindings();
+    if (assign && !bindings[identifier] && bindings.count >= 128) {
+        [self message:@"Remove a wallpaper pack assignment before adding another." title:@"Error"];
+        return;
+    }
+    if (assign) bindings[identifier] = pack;
+    else [bindings removeObjectForKey:identifier];
+    CFPreferencesSetAppValue(CFSTR("wallpaperPacks"), (__bridge CFPropertyListRef)bindings, domain);
+    if (!CFPreferencesAppSynchronize(domain)) {
+        [self message:@"Could not save settings." title:@"Error"];
+        return;
+    }
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+        CFSTR("com.ratnik00.nextclock/preferenceschanged"), NULL, NULL, YES);
+    [self message:assign ? @"Pack saved for the current Lock Screen." :
+        @"This Lock Screen uses the global pack." title:@"Applied"];
+}
 - (void)apply {
     if (![self packExists:self.draft[@"pack"]]) { [self message:@"Missing pack. Install it or choose another pack." title:@"Error"]; return; }
     NSDictionary *values=NCNormalizeAppearance(self.draft);

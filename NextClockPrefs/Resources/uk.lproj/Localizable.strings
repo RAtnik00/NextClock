@@ -149,3 +149,11 @@
 "Bold" = "Жирний";
 
 "Choose System for font and weight, and 100% size, to restore the original date appearance." = "Щоб повернути початковий вигляд дати, виберіть «Системний» для шрифту й насиченості та розмір 100%.";
+
+"Lock Screen wallpaper" = "Шпалери екрана замкнення";
+"Apply to current Lock Screen" = "Застосувати до поточного екрана замкнення";
+"Use global pack on this Lock Screen" = "Використовувати загальний пак на цьому екрані";
+"Could not read the selected Lock Screen." = "Не вдалося визначити поточний екран замкнення.";
+"Remove a wallpaper pack assignment before adding another." = "Видаліть одну прив’язку паку до шпалер, перш ніж додати нову.";
+"Pack saved for the current Lock Screen." = "Пак збережено для поточного екрана замкнення.";
+"This Lock Screen uses the global pack." = "На цьому екрані використовується загальний пак.";

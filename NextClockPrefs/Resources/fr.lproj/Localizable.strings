@@ -149,3 +149,11 @@
 "Bold" = "Grasse";
 
 "Choose System for font and weight, and 100% size, to restore the original date appearance." = "Choisissez Système pour la police et la graisse, et une taille de 100 % pour rétablir l’apparence d’origine de la date.";
+
+"Lock Screen wallpaper" = "Fond d’écran verrouillé";
+"Apply to current Lock Screen" = "Appliquer à l’écran verrouillé actuel";
+"Use global pack on this Lock Screen" = "Utiliser le pack par défaut sur cet écran";
+"Could not read the selected Lock Screen." = "Impossible de lire la configuration de l’écran verrouillé actuel.";
+"Remove a wallpaper pack assignment before adding another." = "Supprimez une association de pack avant d’en ajouter une autre.";
+"Pack saved for the current Lock Screen." = "Pack enregistré pour l’écran verrouillé actuel.";
+"This Lock Screen uses the global pack." = "Cet écran verrouillé utilise le pack par défaut.";

@@ -24,7 +24,7 @@ if pro:
 else:assert 'Package: com.ratnik00.nextclock\n' in text and 'Conflicts:' not in text
 base='var/jb/Library/PreferenceBundles/NextClockPrefs.bundle/'
 info=plistlib.loads(files[base+'Info.plist'])
-assert info['NextClockVersion']==('0.1.0~alpha1' if pro else '1.2.0~beta6')
+assert info['NextClockVersion']==('0.1.0~alpha1' if pro else '1.2.0~beta7')
 loader=plistlib.loads(files['var/jb/Library/PreferenceLoader/Preferences/NextClockPrefs.plist'])
 assert loader['entry']['label']==('NextClock Pro' if pro else 'NextClock')
 root=plistlib.loads(files[base+'Root.plist'])['items']

@@ -149,3 +149,11 @@
 "Bold" = "Жирный";
 
 "Choose System for font and weight, and 100% size, to restore the original date appearance." = "Чтобы вернуть исходный вид даты, выберите «Системный» для шрифта и насыщенности и размер 100%.";
+
+"Lock Screen wallpaper" = "Обои экрана блокировки";
+"Apply to current Lock Screen" = "Применить к текущему экрану блокировки";
+"Use global pack on this Lock Screen" = "Использовать общий пак на этом экране";
+"Could not read the selected Lock Screen." = "Не удалось определить текущий экран блокировки.";
+"Remove a wallpaper pack assignment before adding another." = "Удалите одну из привязок пака к обоям, прежде чем добавлять новую.";
+"Pack saved for the current Lock Screen." = "Пак сохранён для текущего экрана блокировки.";
+"This Lock Screen uses the global pack." = "На этом экране используется общий пак.";

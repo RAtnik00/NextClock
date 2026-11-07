@@ -147,3 +147,11 @@
 "Bold" = "Fet";
 
 "Choose System for font and weight, and 100% size, to restore the original date appearance." = "Velg System for skrift og vekt samt 100 % størrelse for å gjenopprette datoens opprinnelige utseende.";
+
+"Lock Screen wallpaper" = "Bakgrunn på låseskjermen";
+"Apply to current Lock Screen" = "Bruk på gjeldende låseskjerm";
+"Use global pack on this Lock Screen" = "Bruk standardpakken på denne låseskjermen";
+"Could not read the selected Lock Screen." = "Kunne ikke lese den valgte låseskjermen.";
+"Remove a wallpaper pack assignment before adding another." = "Fjern en pakketilknytning før du legger til en ny.";
+"Pack saved for the current Lock Screen." = "Pakken er lagret for gjeldende låseskjerm.";
+"This Lock Screen uses the global pack." = "Denne låseskjermen bruker standardpakken.";
