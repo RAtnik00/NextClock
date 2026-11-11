@@ -55,7 +55,7 @@ Image limits: 2048 px per dimension, 240 frames, 8 MB encoded and 96 MB decoded 
 
 ### Community themes
 
-Thanks to the community member who shared this collection of six NextClock packs.
+Thanks to [peto-bot](https://github.com/peto-bot) ([**@peza198** on X](https://x.com/peza198)) for creating and sharing these six NextClock packs.
 
 - **Pink Panther** features an animated tail.
 - **Tom & Jerry Mix** features Tom and Jerry.
