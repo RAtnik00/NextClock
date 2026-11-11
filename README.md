@@ -53,6 +53,21 @@ Bundled packs: /var/jb/Library/Application Support/NextClock/Packs. Imported pac
 
 Image limits: 2048 px per dimension, 240 frames, 8 MB encoded and 96 MB decoded per glyph. Rendering also limits decoded glyph frames to 48 MB per clock row; a row exceeding this budget falls back to the system clock. ZIP limits: 64 MB compressed/expanded, 512 entries. Stored and deflated ZIP entries supported; encryption, ZIP64 and symlinks rejected.
 
+### Community themes
+
+Thanks to the community member who shared this collection of six NextClock packs.
+
+- **Pink Panther** features an animated tail.
+- **Tom & Jerry Mix** features Tom and Jerry.
+- **Tom & Jerry Big** features larger characters, including Tweety.
+- **Funny Numbers** has dancing legs and moving hands.
+- **Christmas** is a static holiday pack.
+- **Heavenly** animates some of its symbols.
+
+[Download the original community archive](https://www.mediafire.com/file/jg4cj3tav878pgr/nextclock_themes.zip/file)
+
+Unzip the outer archive. In **Settings → NextClock → Manage packs → Import pack**, choose the ZIP for the pack you want. Import each inner ZIP separately.
+
 ## Build
 Theos, Xcode, patched iOS 16.5 SDK. Run the checks in [Tests/README.md](Tests/README.md), then `make package FINALPACKAGE=1`. arm64 and arm64e, rootless, deployment iOS 15. The rootless package architecture remains `iphoneos-arm64`. PreferenceLoader required.
 
