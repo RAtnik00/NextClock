@@ -4,6 +4,10 @@
 
 Custom lock screen clocks for rootless iOS 15, with an experimental iOS 16–17 beta.
 
+## 1.2.0 beta 9
+
+Adds experimental Always-On Display clock rendering, tested on iPhone 14 Pro with iOS 16.2. The main settings page now includes diagnostic export, SpringBoard restart, and reset.
+
 ## 1.2.0 beta 7
 
 Choose a pack in Configure clock and apply it to the current Lock Screen. Use the global pack action to remove an assignment. The new controls support all nine languages. Wallpaper switching was tested on iPhone X with iOS 16.7.5.
@@ -90,10 +94,6 @@ NextClock source is provided under GPL-3.0. The settings layout is adapted from 
 
 ## Support
 NextClock is free. Optional support: [buycoffee.to/ratnik00](https://buycoffee.to/ratnik00). Supporting the developer does not unlock extra features.
-
-### Halloween pack
-
-Animated pumpkin digits with flickering warm light and gentle motion; 24 APNG frames per glyph, transparent background, and a static option. Select Halloween in preferences. A localized Halloween greeting appears at the top of the settings page.
 
 ## Experimental iOS 12–14 port
 

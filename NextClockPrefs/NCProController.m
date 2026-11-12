@@ -47,6 +47,7 @@ static NSDictionary *NCCurrentAppearance(void) {
 @property(nonatomic,strong) NSMutableArray<UIImageView *> *digits;
 @property(nonatomic,copy) NSString *signature;
 @property(nonatomic,copy) NSDictionary *packInfo;
+@property(nonatomic,copy) NSArray<NSDictionary *> *packs;
 @property(nonatomic) BOOL active;
 - (void)refresh;
 - (void)pause;
@@ -67,19 +68,20 @@ static NSDictionary *NCCurrentAppearance(void) {
 }
 - (void)setSettings:(NSDictionary *)settings {
     NSDictionary *normalized=NCNormalizeAppearance(settings);
+    if ([_settings isEqual:normalized]) return;
     BOOL imageChange=NO;
     for (NSString *key in @[@"pack",@"colorFilterEnabled",@"tintColor"])
         if (![_settings[key] isEqual:normalized[key]]) imageChange=YES;
     _settings=normalized; self.signature=nil;
     if (![self.packInfo[@"id"] isEqual:normalized[@"pack"]]) {
         self.packInfo=nil;
-        for (NSDictionary *pack in NCAllPacks()) if ([pack[@"id"] isEqual:normalized[@"pack"]]) { self.packInfo=pack; break; }
+        for (NSDictionary *pack in self.packs) if ([pack[@"id"] isEqual:normalized[@"pack"]]) { self.packInfo=pack; break; }
     }
     if (imageChange) [self.cache removeAllObjects];
-    [self refresh];
+    [self setNeedsLayout];
 }
 - (void)pause {
-    self.active=NO; self.signature=nil; [self.cache removeAllObjects];
+    self.active=NO; self.signature=nil;
     for (UIImageView *view in self.digits) { [view.layer removeAllAnimations]; view.image=nil; }
 }
 - (void)layoutSubviews { [super layoutSubviews]; [self refresh]; }
@@ -144,14 +146,14 @@ static NSDictionary *NCCurrentAppearance(void) {
     }
     formatter.dateFormat=[s[@"showSeconds"] boolValue] ? (use24 ? @"HH:mm:ss":@"h:mm:ss") : (use24 ? @"HH:mm":@"h:mm");
     NSString *time=[formatter stringFromDate:now];
-    self.accessibilityValue=[NSString stringWithFormat:@"%@, %@",self.packInfo[@"Name"] ?: s[@"pack"],time];
     BOOL moving=!UIAccessibilityIsReduceMotionEnabled() && [s[@"animationStyle"] isEqual:@"animated"] &&
         !([s[@"staticInLowPower"] boolValue] && NSProcessInfo.processInfo.lowPowerModeEnabled);
+    NSString *signature=[NSString stringWithFormat:@"%@:%@:%d",time,NSStringFromCGSize(self.bounds.size),moving];
+    if ([signature isEqual:self.signature]) return;
+    self.accessibilityValue=[NSString stringWithFormat:@"%@, %@",self.packInfo[@"Name"] ?: s[@"pack"],time];
     formatter.locale=NSLocale.currentLocale; formatter.dateStyle=NSDateFormatterFullStyle; formatter.timeStyle=NSDateFormatterNoStyle;
     self.dateLabel.font=NCDateFont(s,[UIFont preferredFontForTextStyle:UIFontTextStyleFootnote]);
     self.dateLabel.text=[formatter stringFromDate:now]; self.dateLabel.hidden=[s[@"hideDate"] boolValue];
-    NSString *signature=[NSString stringWithFormat:@"%@:%@:%d",time,NSStringFromCGSize(self.bounds.size),moving];
-    if ([signature isEqual:self.signature]) return;
     NSString *folder=nil;
     NSDictionary *pack=self.packInfo;
     if (pack) {
@@ -262,7 +264,7 @@ static NSDictionary *NCCurrentAppearance(void) {
     }
     self.appliedBaseline=NCCurrentAppearance(); self.draft=[self.appliedBaseline mutableCopy];
     self.tableView.rowHeight=UITableViewAutomaticDimension; self.tableView.estimatedRowHeight=64;
-    self.canvas=[NCPreviewCanvas new]; [self.canvas.heightAnchor constraintEqualToConstant:300].active=YES; self.canvas.settings=self.draft;
+    self.canvas=[NCPreviewCanvas new]; self.canvas.packs=NCAllPacks(); [self.canvas.heightAnchor constraintEqualToConstant:300].active=YES; self.canvas.settings=self.draft;
     self.canvas.isAccessibilityElement=YES; self.canvas.accessibilityLabel=P(@"Preview");
     self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc] initWithTitle:P(@"Apply") style:UIBarButtonItemStyleDone target:self action:@selector(apply)];
     [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(powerChanged:) name:NSProcessInfoPowerStateDidChangeNotification object:nil];
@@ -278,7 +280,7 @@ static NSDictionary *NCCurrentAppearance(void) {
 - (NSString *)tableView:(UITableView *)table titleForFooterInSection:(NSInteger)section { NSString *text=self.sections[section][@"footer"]; return text ? P(text) : nil; }
 - (NSDictionary *)row:(NSIndexPath *)index { return self.sections[index.section][@"rows"][index.row]; }
 - (NSString *)valueText:(NSString *)key {
-    if ([key isEqual:@"pack"]) { for (NSDictionary *pack in NCAllPacks()) if ([pack[@"id"] isEqual:self.draft[key]]) return pack[@"Name"]; }
+    if ([key isEqual:@"pack"]) { for (NSDictionary *pack in self.canvas.packs) if ([pack[@"id"] isEqual:self.draft[key]]) return pack[@"Name"]; }
     if ([key isEqual:@"tintColor"]) { for (NSDictionary *color in [self colorChoices]) if ([color[@"value"] isEqual:self.draft[key]]) return P(color[@"name"]); }
     if ([key isEqual:@"dateFontDesign"]) return P(@{@"system":@"System",@"rounded":@"Rounded",@"serif":@"Serif",@"monospaced":@"Monospaced"}[self.draft[key]] ?: @"System");
     if ([key isEqual:@"dateFontWeight"]) return P(@{@"system":@"System",@"regular":@"Regular",@"medium":@"Medium",@"semibold":@"Semibold",@"bold":@"Bold"}[self.draft[key]] ?: @"System");
@@ -395,7 +397,7 @@ static NSDictionary *NCCurrentAppearance(void) {
 }
 - (void)choosePack {
     NSMutableArray *choices=[NSMutableArray array];
-    for (NSDictionary *pack in NCAllPacks()) [choices addObject:@{@"name":pack[@"Name"],@"value":pack[@"id"]}];
+    for (NSDictionary *pack in self.canvas.packs) [choices addObject:@{@"name":pack[@"Name"],@"value":pack[@"id"]}];
     [self showChoices:choices key:@"pack" title:@"Pack"];
 }
 - (void)presentSheet:(UIAlertController *)alert {
@@ -404,7 +406,7 @@ static NSDictionary *NCCurrentAppearance(void) {
     alert.popoverPresentationController.sourceRect=CGRectMake(CGRectGetMidX(self.view.bounds),CGRectGetMidY(self.view.bounds),1,1);
     [self presentViewController:alert animated:YES completion:nil];
 }
-- (BOOL)packExists:(NSString *)identifier { for (NSDictionary *pack in NCAllPacks()) if ([pack[@"id"] isEqual:identifier]) return YES; return NO; }
+- (BOOL)packExists:(NSString *)identifier { for (NSDictionary *pack in self.canvas.packs) if ([pack[@"id"] isEqual:identifier]) return YES; return NO; }
 - (void)saveWallpaperPack:(BOOL)assign {
     NSString *identifier = NCSelectedWallpaper();
     if (!identifier) {

@@ -80,9 +80,6 @@
 "Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta." = "Orologi personalizzati per la schermata di blocco. iOS 15 supportato; beta sperimentale per iOS 16–17.";
 "No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." = "Nessun rapporto diagnostico disponibile. Riavvia SpringBoard, blocca e riattiva il dispositivo, quindi riprova.";
 
-// Halloween edition
-"🎃 Happy Halloween!" = "🎃 Buon Halloween!";
-"Celebrate with the animated Halloween pack. Select Halloween under Pack." = "Festeggia con il pacchetto animato Halloween. Seleziona Halloween alla voce Pacchetto.";
 
 "Experimental rootful build for iOS 12–14. Device testing required." = "Versione rootful sperimentale per iOS 12–14. Richiede test su dispositivo.";
 

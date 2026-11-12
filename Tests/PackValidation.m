@@ -36,7 +36,7 @@ int main(int argc, const char **argv) {
             Check(info != nil, [@"bundled pack passes full ImageIO decode: " stringByAppendingString:name]);
             checked++;
         }
-        Check(checked >= 6, @"all six bundled packs, including Halloween");
+        Check(checked == 5, @"all five bundled packs");
         printf("PASS: %lu bundled packs fully decoded.\n", (unsigned long)checked);
         puts("PASS: pack validation, 3 supported ZIP formats and 10 malformed archives.");
     }

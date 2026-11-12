@@ -38,7 +38,7 @@ with archive('data.tar') as payload, tempfile.TemporaryDirectory() as temp:
     info = plistlib.loads(payload.extractfile(files[bundle+'Info.plist']).read())
     assert info['NextClockVersion'] == '1.1.1~legacy1'
     assert len(info['CFBundleLocalizations']) == 9
-    for name in ('Anime', 'CRT.flexpack', 'Pixel.flexpack', 'Sakura.flexpack', 'Circuit', 'Halloween'):
+    for name in ('Anime', 'CRT.flexpack', 'Pixel.flexpack', 'Sakura.flexpack', 'Circuit'):
         assert any(p.startswith('Library/Application Support/NextClock/Packs/'+name+'/') for p in files), name
     for name in ('Library/MobileSubstrate/DynamicLibraries/NextClock.dylib', bundle+'NextClockPrefs'):
         binary = pathlib.Path(temp)/pathlib.Path(name).name

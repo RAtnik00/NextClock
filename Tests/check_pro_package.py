@@ -24,18 +24,19 @@ if pro:
 else:assert 'Package: com.ratnik00.nextclock\n' in text and 'Conflicts:' not in text
 base='var/jb/Library/PreferenceBundles/NextClockPrefs.bundle/'
 info=plistlib.loads(files[base+'Info.plist'])
-assert info['NextClockVersion']==('0.1.0~alpha1' if pro else '1.2.0~beta7')
+assert info['NextClockVersion']==('0.1.0~alpha1' if pro else '1.2.0~beta9')
 loader=plistlib.loads(files['var/jb/Library/PreferenceLoader/Preferences/NextClockPrefs.plist'])
 assert loader['entry']['label']==('NextClock Pro' if pro else 'NextClock')
 root=plistlib.loads(files[base+'Root.plist'])['items']
 assert [row['key'] for row in root if 'key' in row]==['enabled'], 'main page must not duplicate appearance controls'
-assert any(row.get('action')=='openProPreview' for row in root), 'editor must remain reachable'
-assert {row.get('nextClockPage') for row in root if row.get('nextClockPage')}=={'Favorites','ManagePacks','Advanced','About'}
-advanced=plistlib.loads(files[base+'Advanced.plist'])['items']
-assert {row.get('action') for row in advanced if row.get('action')}=={'exportDiagnostics','openStableReleases','restartSpringBoard','resetSettings'}
+assert {row['action'] for row in root if 'action' in row}=={'openProPreview','exportDiagnostics','restartSpringBoard','resetSettings'}
+assert {row.get('nextClockPage') for row in root if row.get('nextClockPage')}=={'Favorites','ManagePacks','About'}
+assert base+'Advanced.plist' not in files
+assert root[-1].get('nextClockPage')=='About' and root[-2].get('footerText','').startswith('iOS 16–17')
 about=plistlib.loads(files[base+'About.plist'])['items']
 assert any(row.get('action')=='supportDeveloper' for row in about)
 
+assert not any('/Packs/Halloween/' in name for name in files)
 assert not any('ProProfiles.plist' in name for name in files), 'must never ship personal profiles'
 assert b'NCProController' in files[base+'NextClockPrefs']
 assert (b'saveProfile' in files[base+'NextClockPrefs'])==pro

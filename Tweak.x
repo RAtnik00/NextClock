@@ -223,7 +223,37 @@ static NSString *NCFolder(BOOL wanted, NSString *pack) {
     }
     return nil;
 }
-static NSString *NCTime(NSDate *date) {
+#ifdef NC_AOD_TEST
+static BOOL NCAODActive(UIView *host) {
+    Class coverSheet = NSClassFromString(@"CSCoverSheetViewController");
+    SEL luminance = NSSelectorFromString(@"backlightLuminance");
+    for (UIResponder *responder = host; responder; responder = responder.nextResponder) {
+        if (![responder isKindOfClass:coverSheet]) continue;
+        Class cls = object_getClass(responder);
+        // iPhone 14 Pro on iOS 16.2 reports 0 off, 1 AOD, and 2 awake.
+        if (NCMethodHasABI(cls, luminance, @encode(NSInteger), @[])) {
+            NSInteger (*read)(id, SEL) = (NSInteger (*)(id, SEL))[responder methodForSelector:luminance];
+            return read(responder, luminance) == 1;
+        }
+        if (NCMethodHasABI(cls, luminance, @encode(NSUInteger), @[])) {
+            NSUInteger (*read)(id, SEL) = (NSUInteger (*)(id, SEL))[responder methodForSelector:luminance];
+            return read(responder, luminance) == 1;
+        }
+        if (NCMethodHasABI(cls, luminance, @encode(int), @[])) {
+            int (*read)(id, SEL) = (int (*)(id, SEL))[responder methodForSelector:luminance];
+            return read(responder, luminance) == 1;
+        }
+        if (NCMethodHasABI(cls, luminance, @encode(double), @[])) {
+            double (*read)(id, SEL) = (double (*)(id, SEL))[responder methodForSelector:luminance];
+            return read(responder, luminance) == 1;
+        }
+        break;
+    }
+    return NO;
+}
+#endif
+
+static NSString *NCTime(NSDate *date, BOOL showSeconds) {
     static NSDateFormatter *formatter;
     if (!formatter) {
         formatter = [NSDateFormatter new];
@@ -235,7 +265,7 @@ static NSString *NCTime(NSDate *date) {
         NSString *pattern = [NSDateFormatter dateFormatFromTemplate:@"j" options:0 locale:NSLocale.currentLocale];
         use24 = [pattern containsString:@"H"] || [pattern containsString:@"k"];
     }
-    formatter.dateFormat = NCShowSeconds
+    formatter.dateFormat = showSeconds
         ? (use24 ? @"HH:mm:ss" : @"h:mm:ss")
         : (use24 ? @"HH:mm" : @"h:mm");
     formatter.timeZone = NSTimeZone.localTimeZone; return [formatter stringFromDate:date];
@@ -272,7 +302,8 @@ static void NCRequestClockLayout(UIView *host) {
     });
 }
 
-static BOOL NCHasVisibleClock(void) {
+static NSTimeInterval NCClockRefreshInterval(void) {
+    if (!NCEnabled) return 0;
     for (UIView *view in NCViews.allObjects) {
         NCClockState *state = objc_getAssociatedObject(view, &NCStateKey);
         if (!view.window || !state.overlay || state.overlay.hidden || state.overlay.alpha<=.01) continue;
@@ -286,51 +317,39 @@ static BOOL NCHasVisibleClock(void) {
             }
         }
 
-        if (visible) return YES;
+        if (!visible) continue;
+#ifdef NC_AOD_TEST
+        if (NCAODActive(view)) continue;
+#endif
+        if (NCScreenOn && NCShowSeconds) return 1;
     }
 
-    return NO;
+    return 0;
 }
 
+#ifdef NC_AOD_PROBE
+static void NCRecordDisplayProbe(NSString *event, UIView *host);
+#endif
+
 static void NCUpdateSecondsTimer(void) {
-    BOOL shouldRun =
-        NCEnabled &&
-        NCShowSeconds &&
-        NCScreenOn &&
-        NCHasVisibleClock();
-
-    if (!shouldRun) {
-        [NCSecondsTimer invalidate];
-        NCSecondsTimer = nil;
-        return;
-    }
-
-    if (NCSecondsTimer) return;
+    NSTimeInterval interval = NCClockRefreshInterval();
+    if (NCSecondsTimer && interval == NCSecondsTimer.timeInterval) return;
+    [NCSecondsTimer invalidate];
+    NCSecondsTimer = nil;
+    if (!interval) return;
 
     NSTimeInterval now = NSDate.date.timeIntervalSince1970;
-    NSDate *nextSecond =
-        [NSDate dateWithTimeIntervalSince1970:floor(now) + 1.0];
-
-    NCSecondsTimer = [[NSTimer alloc]
-        initWithFireDate:nextSecond
-        interval:1.0
-        repeats:YES
+    NSDate *nextTick = [NSDate dateWithTimeIntervalSince1970:(floor(now / interval) + 1) * interval];
+    NCSecondsTimer = [[NSTimer alloc] initWithFireDate:nextTick interval:interval repeats:YES
         block:^(NSTimer *timer) {
-            if (!NCEnabled || !NCShowSeconds ||
-                !NCScreenOn || !NCHasVisibleClock()) {
-                [timer invalidate];
-                NCSecondsTimer = nil;
+            if (NCClockRefreshInterval() != timer.timeInterval) {
+                NCUpdateSecondsTimer();
                 return;
             }
-
             NCRefreshViews();
         }];
-
     NCSecondsTimer.tolerance = 0.02;
-
-    [NSRunLoop.mainRunLoop
-        addTimer:NCSecondsTimer
-        forMode:NSRunLoopCommonModes];
+    [NSRunLoop.mainRunLoop addTimer:NCSecondsTimer forMode:NSRunLoopCommonModes];
 }
 static void NCPreferencesChanged(CFNotificationCenterRef c, void *o, CFStringRef n, const void *object, CFDictionaryRef info) {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -343,10 +362,66 @@ static void NCPreferencesChanged(CFNotificationCenterRef c, void *o, CFStringRef
 static void NCRespring(CFNotificationCenterRef c, void *o, CFStringRef n, const void *object, CFDictionaryRef info) {
     dispatch_async(dispatch_get_main_queue(), ^{ exit(0); });
 }
+#ifdef NC_AOD_PROBE
+static void NCRecordDisplayProbe(NSString *event, UIView *host) {
+    if (!NSThread.isMainThread) return;
+    static NSMutableString *report;
+    static NSString *lastLayout;
+    static NSUInteger samples;
+    if (samples >= 96 && ![event hasPrefix:@"AOD "]) return;
+    if (samples >= 128) return;
+    uint64_t displayState = 0;
+    BOOL hasState = NCDisplayToken >= 0 && notify_get_state(NCDisplayToken, &displayState) == NOTIFY_STATUS_OK;
+    NSString *sample = [NSString stringWithFormat:@"%@ hid=%@ brightness=%.2f host=%@ attached=%d alpha=%.2f hidden=%d",
+        event, hasState ? @(displayState).stringValue : @"unknown", UIScreen.mainScreen.brightness,
+        host ? NSStringFromClass(host.class) : @"-", host.window != nil, host.alpha, host.hidden];
+    if ([event isEqualToString:@"layout"]) {
+        if ([sample isEqualToString:lastLayout]) return;
+        lastLayout = sample;
+    } else {
+        lastLayout = nil;
+    }
+    if (!report) {
+        report = [NSMutableString stringWithFormat:@"NextClock AOD probe 6 | iOS %@\n", UIDevice.currentDevice.systemVersion];
+        unsigned int count = 0;
+        Class *classes = objc_copyClassList(&count);
+        NSUInteger listed = 0;
+        for (unsigned int i = 0; i < count && listed < 120; i++) {
+            NSString *name = NSStringFromClass(classes[i]);
+            if (![name hasPrefix:@"SB"] && ![name hasPrefix:@"CS"] && classes[i] != UITraitCollection.class) continue;
+            if ([name containsString:@"VoiceTrigger"] || [name hasPrefix:@"CSAudio"]) continue;
+            unsigned int methodCount = 0;
+            Method *methods = class_copyMethodList(classes[i], &methodCount);
+            for (unsigned int j = 0; j < methodCount && listed < 120; j++) {
+                NSString *selector = NSStringFromSelector(method_getName(methods[j]));
+                NSString *lower = selector.lowercaseString;
+                if (![lower containsString:@"alwayson"] && ![lower containsString:@"lowluminance"] &&
+                    ![lower containsString:@"ambientdisplay"] && ![lower containsString:@"aod"] && ![lower containsString:@"luminance"]) continue;
+                [report appendFormat:@"%@ %@\n", name, selector];
+                listed++;
+            }
+            free(methods);
+        }
+        free(classes);
+    }
+    [report appendFormat:@"%.3f %@\n", NSProcessInfo.processInfo.systemUptime, sample];
+    samples++;
+    [report writeToFile:@"/var/mobile/Library/NextClock-aod-probe.txt" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+}
+#endif
+
 static void NCStart(void) {
     if (NCStarted) return; NCStarted = YES;
     NCViews = [NSHashTable weakObjectsHashTable]; NCImages = [NSCache new]; NCImages.totalCostLimit = 36 * 1024 * 1024;
     NCLoadSettings();
+#ifdef NC_AOD_PROBE
+    if (@available(iOS 16.0, *)) {
+        [NSNotificationCenter.defaultCenter addObserverForName:UIScreenBrightnessDidChangeNotification
+            object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *note) {
+                NCRecordDisplayProbe(@"brightness", nil);
+            }];
+    }
+#endif
     uint32_t result = notify_register_dispatch(
         "com.apple.iokit.hid.displayStatus",
         &NCDisplayToken,
@@ -360,6 +435,9 @@ static void NCStart(void) {
                 NCScreenOn = NO;
             }
 
+#ifdef NC_AOD_PROBE
+            if (@available(iOS 16.0, *)) NCRecordDisplayProbe(@"display", nil);
+#endif
             NCUpdateSecondsTimer();
 
             if (NCScreenOn) {
@@ -642,10 +720,13 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
         for (UIImageView *view in state.views) NCClearView(view);
         return;
     }
-    BOOL wanted = NCWantsAnimation();
-    NSDate *date = NCShowSeconds
-        ? NSDate.date
-        : providedDate;
+    BOOL alwaysOn = NO;
+#ifdef NC_AOD_TEST
+    alwaysOn = modern && NCAODActive(self);
+#endif
+    BOOL showSeconds = NCShowSeconds && !alwaysOn;
+    BOOL wanted = !alwaysOn && NCWantsAnimation();
+    NSDate *date = showSeconds ? NSDate.date : providedDate;
 
     NSString *pack = NCPack;
     if (modern && NCWallpaperBindings.count) {
@@ -658,7 +739,7 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
         }
         if (selected) pack = NCWallpaperBindings[selected] ?: NCPack;
     }
-    NSString *time = NCTime(date ?: NSDate.date);
+    NSString *time = NCTime(date ?: NSDate.date, showSeconds);
     NSString *signature = [NSString stringWithFormat:@"%@|%@|%@|%@|%lu|%d", pack, time,
         NSStringFromCGRect(timeLabel.frame), NSStringFromCGRect(self.bounds), (unsigned long)NCGeneration, wanted];
     if (state && [state.signature isEqual:signature] && !state.overlay.hidden) {
@@ -730,6 +811,9 @@ static void NCLayoutClock(UIView *self, UIView *timeLabel, UIView *dateLabel, NS
         NCSetGlyph(view, glyphs[i], wanted); x += glyphWidth + NCSpacing;
     }
     timeLabel.alpha = 0; state.signature = signature; state.animated = wanted;
+#if defined(NC_AOD_TEST) && defined(NC_AOD_PROBE)
+    if (alwaysOn) NCRecordDisplayProbe([@"AOD rendered time=" stringByAppendingString:time], self);
+#endif
     NCPlaceLegacyDate(self, dateLabel, state);
     NCUpdateSecondsTimer();
 }
@@ -1264,6 +1348,9 @@ static void NCCompatibilitySnapshot(UIView *host) {
 %hook CSProminentDisplayView
 - (void)layoutSubviews {
     NCStart();
+#ifdef NC_AOD_PROBE
+    NCRecordDisplayProbe(@"layout", self);
+#endif
     // An untouched, disabled instance must be a straight pass-through.
     UIView *priorTime=self.timeView;
     BOOL managed=objc_getAssociatedObject(self,&NCStateKey)!=nil ||
@@ -1318,7 +1405,10 @@ static void NCCompatibilitySnapshot(UIView *host) {
     @finally { objc_setAssociatedObject(time,&NCModernOwnAlphaWriteKey,nil,OBJC_ASSOCIATION_RETAIN_NONATOMIC); }
     NCClockState *rendered = objc_getAssociatedObject(self, &NCStateKey);
     // Editing a wallpaper must not cycle global favorites via double tap.
-    rendered.favoriteTap.enabled=!NCModernUsesEditingLayout(self);
+    rendered.favoriteTap.enabled = !NCModernUsesEditingLayout(self);
+#ifdef NC_AOD_TEST
+    if (NCAODActive(self)) rendered.favoriteTap.enabled = NO;
+#endif
     BOOL replacingTime = NCEnabled && rendered.overlay &&
         rendered.overlay.superview == self && !rendered.overlay.hidden;
     if (replacingTime) {
@@ -1342,7 +1432,28 @@ static void NCCompatibilitySnapshot(UIView *host) {
     );
 
     %orig;
-    if (NCEnabled) [self setNeedsLayout];
+    if (!NCEnabled) return;
+#ifdef NC_AOD_TEST
+    if (self.window && NCAODActive(self)) {
+#ifdef NC_AOD_PROBE
+        if (date) {
+            NCRecordDisplayProbe([@"AOD system clock time=" stringByAppendingString:NCTime(date, NO)], self);
+        }
+#endif
+        // SpringBoard supplies a different date for each AOD frame.
+        // Render before returning so consecutive frames cannot share a queued layout.
+        if ([objc_getAssociatedObject(self, &NCLayoutInProgressKey) boolValue]) {
+            NCRequestClockLayout(self);
+        } else {
+            [UIView performWithoutAnimation:^{
+                [self setNeedsLayout];
+                [self layoutIfNeeded];
+            }];
+        }
+        return;
+    }
+#endif
+    [self setNeedsLayout];
 }
 - (void)didMoveToWindow {
     %orig;
@@ -1400,8 +1511,72 @@ static void NCCompatibilitySnapshot(UIView *host) {
 %end
 %end
 
+#if defined(NC_AOD_PROBE) || defined(NC_AOD_TEST)
+@interface CSCoverSheetViewController : UIViewController
+@end
+
+#ifdef NC_AOD_PROBE
+static NSString *NCProbeLuminance(id object, SEL selector) {
+    if (!object) return @"missing";
+    Class cls = object_getClass(object);
+    if (NCMethodHasABI(cls, selector, @encode(NSInteger), @[])) {
+        NSInteger (*read)(id, SEL) = (NSInteger (*)(id, SEL))[object methodForSelector:selector];
+        return @(read(object, selector)).stringValue;
+    }
+    if (NCMethodHasABI(cls, selector, @encode(NSUInteger), @[])) {
+        NSUInteger (*read)(id, SEL) = (NSUInteger (*)(id, SEL))[object methodForSelector:selector];
+        return @(read(object, selector)).stringValue;
+    }
+    if (NCMethodHasABI(cls, selector, @encode(int), @[])) {
+        int (*read)(id, SEL) = (int (*)(id, SEL))[object methodForSelector:selector];
+        return @(read(object, selector)).stringValue;
+    }
+    if (NCMethodHasABI(cls, selector, @encode(double), @[])) {
+        double (*read)(id, SEL) = (double (*)(id, SEL))[object methodForSelector:selector];
+        return @(read(object, selector)).stringValue;
+    }
+    Method method = class_getInstanceMethod(cls, selector);
+    return method ? @(method_getTypeEncoding(method)) : @"unavailable";
+}
+
+#endif
+
+%group NCAODTransitionProbe
+%hook CSCoverSheetViewController
+- (void)_updateAppearanceForAODTransitionWithPreviousTraitCollection:(UITraitCollection *)previous {
+    %orig;
+    if (!NSThread.isMainThread) return;
+#ifdef NC_AOD_PROBE
+    UITraitCollection *current = self.traitCollection;
+    SEL traitLuminance = NSSelectorFromString(@"_backlightLuminance");
+    SEL coverLuminance = NSSelectorFromString(@"backlightLuminance");
+    NSString *event = [NSString stringWithFormat:@"AOD transition previousLuminance=%@ currentLuminance=%@ coverLuminance=%@",
+        NCProbeLuminance(previous, traitLuminance), NCProbeLuminance(current, traitLuminance),
+        NCProbeLuminance(self, coverLuminance)];
+    NCRecordDisplayProbe(event, self.viewIfLoaded);
+#endif
+#ifdef NC_AOD_TEST
+    if (!NCEnabled) return;
+    UIView *cover = self.viewIfLoaded;
+    for (UIView *host in NCViews.allObjects) {
+        if (cover && [host isDescendantOfView:cover]) NCRequestClockLayout(host);
+    }
+    NCUpdateSecondsTimer();
+#endif
+}
+%end
+%end
+#endif
+
 %ctor {
     @autoreleasepool {
+#if defined(NC_AOD_PROBE) || defined(NC_AOD_TEST)
+        Class coverSheet = NSClassFromString(@"CSCoverSheetViewController");
+        SEL transition = NSSelectorFromString(@"_updateAppearanceForAODTransitionWithPreviousTraitCollection:");
+        if (NCMethodHasABI(coverSheet, transition, "v", @[@"@"])) {
+            %init(NCAODTransitionProbe);
+        }
+#endif
         Class modernClass = NSClassFromString(@"CSProminentDisplayView");
         BOOL modern = UIDevice.currentDevice.systemVersion.doubleValue >= 16 && modernClass &&
             NCMethodHasABI(modernClass, @selector(timeView), "@", @[]) &&

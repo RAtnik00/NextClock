@@ -8,14 +8,6 @@
 	<array>
 		<dict>
 			<key>cell</key>
-			<string>PSGroupCell</string>
-			<key>label</key>
-			<string>🎃 Happy Halloween!</string>
-			<key>footerText</key>
-			<string>Celebrate with the animated Halloween pack. Select Halloween under Pack.</string>
-		</dict>
-		<dict>
-			<key>cell</key>
 			<string>PSSwitchCell</string>
 			<key>label</key>
 			<string>Enabled</string>
@@ -66,15 +58,33 @@
 		</dict>
 		<dict>
 			<key>cell</key>
-			<string>PSLinkCell</string>
+			<string>PSButtonCell</string>
 			<key>label</key>
-			<string>Advanced</string>
-			<key>detail</key>
-			<string>NCRootListControllerRootListController</string>
-			<key>isController</key>
-			<true/>
-			<key>nextClockPage</key>
-			<string>Advanced</string>
+			<string>Export diagnostics</string>
+			<key>action</key>
+			<string>exportDiagnostics</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Restart SpringBoard</string>
+			<key>action</key>
+			<string>restartSpringBoard</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Reset settings</string>
+			<key>action</key>
+			<string>resetSettings</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>footerText</key>
+			<string>iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak.</string>
 		</dict>
 		<dict>
 			<key>cell</key>

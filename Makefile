@@ -7,6 +7,9 @@ TWEAK_NAME = NextClock
 
 NextClock_FILES = Tweak.x
 NextClock_CFLAGS = -fobjc-arc
+ifeq ($(NC_LEGACY)$(NC_PRO),)
+NextClock_CFLAGS += -DNC_AOD_TEST
+endif
 ifeq ($(NC_PRO),1)
 NextClock_CFLAGS += -DNC_PRO_BUILD=1
 endif

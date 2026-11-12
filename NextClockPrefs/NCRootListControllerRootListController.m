@@ -71,9 +71,6 @@ static NSString *NCText(NSString *key) {
 - (NSArray *)specifiers {
     if (_specifiers) return _specifiers;
     NSString *page=[self.specifier propertyForKey:@"nextClockPage"];
-    if ([page isEqual:@"Advanced"]) {
-        _specifiers=[self nc_loadSpecifiers:@"Advanced"]; return _specifiers;
-    }
     if ([page isEqual:@"About"]) {
         _specifiers=[self nc_loadSpecifiers:@"About"]; return _specifiers;
     }
@@ -92,8 +89,8 @@ static NSString *NCText(NSString *key) {
         } else [group setProperty:NCText(@"Bundled packs are part of NextClock and cannot be deleted here.") forKey:@"footerText"];
         _specifiers=items; return _specifiers;
     }
-    NSArray *packs=NCAllPacks();
     if ([page isEqual:@"Favorites"]) {
+        NSArray *packs=NCAllPacks();
         self.title=NCText(@"Favorites");
         NSMutableArray *items=[NSMutableArray array];
         PSSpecifier *group=[PSSpecifier groupSpecifierWithName:NCText(@"Favorites")];
@@ -107,6 +104,7 @@ static NSString *NCText(NSString *key) {
         _specifiers=items; return _specifiers;
     }
     if ([page isEqual:@"ManagePacks"]) {
+        NSArray *packs=NCAllPacks();
         NSMutableArray *items=[NSMutableArray array];
         [items addObject:[PSSpecifier groupSpecifierWithName:NCText(@"INSTALLED")]];
         for (NSDictionary *pack in packs) {
@@ -127,10 +125,14 @@ static NSString *NCText(NSString *key) {
     self.title=@"NextClock Pro";
     for (PSSpecifier *row in _specifiers) if ([row.name isEqual:NCText(@"Configure clock")]) row.name=NCText(@"Preview & Profiles");
 #endif
-    NSMutableArray *values=[NSMutableArray array], *titles=[NSMutableArray array];
-    for (NSDictionary *pack in packs) { [values addObject:pack[@"id"]]; [titles addObject:pack[@"Name"]]; }
     for (PSSpecifier *row in _specifiers) if ([[row propertyForKey:@"key"] isEqual:@"pack"]) {
-        [row setValues:values titles:titles shortTitles:titles]; break;
+        NSMutableArray *values=[NSMutableArray array], *titles=[NSMutableArray array];
+        for (NSDictionary *pack in NCAllPacks()) {
+            [values addObject:pack[@"id"]];
+            [titles addObject:pack[@"Name"]];
+        }
+        [row setValues:values titles:titles shortTitles:titles];
+        break;
     }
     return _specifiers;
 }
@@ -142,15 +144,12 @@ static NSString *NCText(NSString *key) {
 - (void)openProPreview {
     [self.navigationController pushViewController:[NCProController new] animated:YES];
 }
-- (void)openStableReleases {
-    [UIApplication.sharedApplication openURL:[NSURL URLWithString:@"https://ratnik00.github.io/repo/releases/"] options:@{} completionHandler:nil];
-}
 - (id)readFavorite:(PSSpecifier *)specifier {
     CFPreferencesAppSynchronize(CFSTR("com.ratnik00.nextclock"));
     NSString *identifier=[specifier propertyForKey:@"favoriteID"];
     NSString *key=[identifier isEqual:@"doubleTapFavorites"] ? identifier : @"favoritePacks";
     id value=CFBridgingRelease(CFPreferencesCopyAppValue((__bridge CFStringRef)key,CFSTR("com.ratnik00.nextclock")));
-    return [key isEqual:@"favoritePacks"] ? @([NCFavoriteIdentifiers(value,NCAllPacks()) containsObject:identifier]) : @([value isKindOfClass:NSNumber.class] && [value boolValue]);
+    return [key isEqual:@"favoritePacks"] ? @([value isKindOfClass:NSArray.class] && [value containsObject:identifier]) : @([value isKindOfClass:NSNumber.class] && [value boolValue]);
 }
 - (void)setFavorite:(NSNumber *)on specifier:(PSSpecifier *)specifier {
     CFStringRef domain=CFSTR("com.ratnik00.nextclock"); CFPreferencesAppSynchronize(domain);
@@ -302,6 +301,15 @@ static NSString *NCText(NSString *key) {
     if (![NSFileManager.defaultManager copyItemAtURL:[NSURL fileURLWithPath:path] toURL:copy error:&error]) {
         [self showMessage:error.localizedDescription title:@"NextClock"]; return;
     }
+#ifdef NC_AOD_PROBE
+    NSString *probe = [NSString stringWithContentsOfFile:@"/var/mobile/Library/NextClock-aod-probe.txt"
+        encoding:NSUTF8StringEncoding error:nil];
+    if (probe.length) {
+        NSString *report = [NSString stringWithContentsOfURL:copy encoding:NSUTF8StringEncoding error:nil] ?: @"";
+        [[report stringByAppendingFormat:@"\n\n%@", probe] writeToURL:copy atomically:YES
+            encoding:NSUTF8StringEncoding error:nil];
+    }
+#endif
     UIActivityViewController *share = [[UIActivityViewController alloc]
         initWithActivityItems:@[copy] applicationActivities:nil];
     share.popoverPresentationController.sourceView = self.view;
