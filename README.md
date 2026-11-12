@@ -17,13 +17,9 @@ Choose a pack in Configure clock and apply it to the current Lock Screen. Use th
 Charging visibility and wallpaper-editor rendering improvements. Developer-tested on iPhone X / iOS 16.7.5 and iPhone 7 Plus / iOS 15.8.8. Gallery thumbnails remain native; no per-wallpaper pack selection or new iOS 18 support. See [IOS16-REWORK.md](IOS16-REWORK.md).
 
 
-Adds date font design, relative size and weight customization, favorite packs with opt-in double-tap switching, an animated draft preview with Apply, and a stable-release archive for rollback. Beta 2 consolidates appearance controls (including color and Low Power Mode) in Configure clock and moves maintenance tools to Advanced. Beta 3 uses native grouped editor lists, checkmark selection pages, Dynamic Type and VoiceOver labels, respects Reduce Motion, and confirms respring. Profile saving remains Pro-only. New gestures and preview behavior require device testing. See [BETA-1.2.md](BETA-1.2.md).
+Adds date font design, relative size and weight customization, favorite packs with opt-in double-tap switching, an animated draft preview with Apply, and a stable-release archive for rollback. Beta 2 consolidates appearance controls (including color and Low Power Mode) in Configure clock and moves maintenance tools to Advanced. Beta 3 uses native grouped editor lists, checkmark selection pages, Dynamic Type and VoiceOver labels, respects Reduce Motion, and confirms respring. New gestures and preview behavior require device testing. See [BETA-1.2.md](BETA-1.2.md).
 
 ## Compatibility
-
-The separate, unpublished [NextClock Pro prototype](PRO-ALPHA.md) adds an opt-in
-preview and appearance-profile editor. Build it explicitly with `NC_PRO=1`;
-the ordinary build retains the free feature set.
 
 - Rootless iOS 15: previously tested devices listed below
 - iOS 16–17: experimental; limited tester reports, not universal compatibility
@@ -86,18 +82,8 @@ Staged imports and confirmations preserve existing packs; every glyph is validat
 ## Device verification
 Local release checks passed on the development device, alongside native pack/ZIP and resource tests. Other devices still need validation, especially iOS 16/17 wallpaper, music and charging transitions. Report model, exact iOS, jailbreak and installed version with any issue.
 
-## Roadmap
-An iOS 13–14 port is planned as a separate update. Version 1.1.0 requires iOS 15 or newer; it does not include that port.
-
 ## License
 NextClock source is provided under GPL-3.0. The settings layout is adapted from [FlexClock](https://github.com/tr3tol/FlexClock) by tr3tol (GPL-3.0); attribution is retained in [CREDITS.md](CREDITS.md). Halloween artwork was generated with the built-in image generation tool and animated with the accompanying pack builder. This source license does not grant rights to third-party artwork.
 
 ## Support
 NextClock is free. Optional support: [buycoffee.to/ratnik00](https://buycoffee.to/ratnik00). Supporting the developer does not unlock extra features.
-
-## Experimental iOS 12–14 port
-
-An opt-in **rootful** test build is being prepared separately from the iOS 15+
-release. See [LEGACY-TESTING.md](LEGACY-TESTING.md) for package selection, the
-iOS 12/13 arm64e limitation, build commands and the device-testing checklist.
-This port has not yet been verified on a physical device.
