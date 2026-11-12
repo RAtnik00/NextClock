@@ -1,10 +1,10 @@
 Package: com.ratnik00.nextclock
 Name: NextClock
-Version: 1.2.0~beta9
+Version: 1.2.0~beta10
 Architecture: iphoneos-arm64
-Description: Animated Lock Screen clocks for rootless iOS 15-17. iOS 16-17 support remains experimental.
+Description: Animated Lock Screen clocks for rootless iOS 15-18. iOS 16-18 support is experimental.
 Maintainer: RAtnik00
 Author: RAtnik00
 Section: Tweaks
-Depends: firmware (>= 15.0), firmware (<< 18.0), mobilesubstrate (>= 0.9.5000), preferenceloader
+Depends: firmware (>= 15.0), firmware (<< 19.0), mobilesubstrate (>= 0.9.5000), preferenceloader
 Icon: https://ratnik00.github.io/repo/assets/nextclock-icon.png

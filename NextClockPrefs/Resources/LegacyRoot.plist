@@ -380,7 +380,7 @@
 			<key>label</key>
 			<string>BETA TESTING</string>
 			<key>footerText</key>
-			<string>iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak.</string>
+			<string>iOS 16–18 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak.</string>
 		</dict>
 		<dict>
 			<key>cell</key>

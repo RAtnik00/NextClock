@@ -74,8 +74,8 @@
 "Show seconds" = "Sekunden anzeigen";
 "BETA TESTING" = "BETA-TEST";
 "Export diagnostics" = "Diagnose exportieren";
-"iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Die Unterstützung für iOS 16–17 ist experimentell und wurde nur auf wenigen Geräten getestet. iOS 15 wird weiterhin unterstützt. Bitte Modell, genaue iOS-Version und Jailbreak angeben.";
-"Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta." = "Eigene Sperrbildschirmuhren. iOS 15 wird unterstützt; iOS 16–17 als experimentelle Beta.";
+"iOS 16–18 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Die Unterstützung für iOS 16–18 ist experimentell und wurde nur auf wenigen Geräten getestet. iOS 15 wird weiterhin unterstützt. Bitte Modell, genaue iOS-Version und Jailbreak angeben.";
+"Custom lock screen clocks. iOS 15 supported; iOS 16–18 experimental beta." = "Eigene Sperrbildschirmuhren. iOS 15 wird unterstützt; iOS 16–18 als experimentelle Beta.";
 "No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." = "Noch kein Diagnosebericht vorhanden. Starte SpringBoard neu, sperre das Gerät, aktiviere den Bildschirm und versuche es erneut.";
 
 

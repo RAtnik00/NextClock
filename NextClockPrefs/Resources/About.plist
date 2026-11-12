@@ -12,7 +12,7 @@
 			<key>label</key>
 			<string>NEXTCLOCK</string>
 			<key>footerText</key>
-			<string>Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta.</string>
+			<string>Custom lock screen clocks. iOS 15 supported; iOS 16–18 experimental beta.</string>
 		</dict>
 		<dict>
 			<key>cell</key>

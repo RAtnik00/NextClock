@@ -22,9 +22,11 @@ if pro:
     assert 'Version: 0.1.0~alpha1\n' in text and text.count('Conflicts: com.ratnik00.nextclock\n')==1
     assert text.count('Replaces: com.ratnik00.nextclock\n')==1
 else:assert 'Package: com.ratnik00.nextclock\n' in text and 'Conflicts:' not in text
+if not pro:
+    assert "firmware (>= 15.0), firmware (<< 19.0)" in text
 base='var/jb/Library/PreferenceBundles/NextClockPrefs.bundle/'
 info=plistlib.loads(files[base+'Info.plist'])
-assert info['NextClockVersion']==('0.1.0~alpha1' if pro else '1.2.0~beta9')
+assert info['NextClockVersion']==('0.1.0~alpha1' if pro else '1.2.0~beta10')
 loader=plistlib.loads(files['var/jb/Library/PreferenceLoader/Preferences/NextClockPrefs.plist'])
 assert loader['entry']['label']==('NextClock Pro' if pro else 'NextClock')
 root=plistlib.loads(files[base+'Root.plist'])['items']
@@ -32,7 +34,7 @@ assert [row['key'] for row in root if 'key' in row]==['enabled'], 'main page mus
 assert {row['action'] for row in root if 'action' in row}=={'openProPreview','exportDiagnostics','restartSpringBoard','resetSettings'}
 assert {row.get('nextClockPage') for row in root if row.get('nextClockPage')}=={'Favorites','ManagePacks','About'}
 assert base+'Advanced.plist' not in files
-assert root[-1].get('nextClockPage')=='About' and root[-2].get('footerText','').startswith('iOS 16–17')
+assert root[-1].get('nextClockPage')=='About' and root[-2].get('footerText','').startswith('iOS 16–18')
 about=plistlib.loads(files[base+'About.plist'])['items']
 assert any(row.get('action')=='supportDeveloper' for row in about)
 

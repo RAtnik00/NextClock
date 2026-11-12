@@ -76,8 +76,8 @@
 // 1.1.0 beta testing
 "BETA TESTING" = "TEST DE LA BÊTA";
 "Export diagnostics" = "Exporter le diagnostic";
-"iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "La prise en charge d’iOS 16–17 est expérimentale et a été testée sur un nombre limité d’appareils. iOS 15 reste pris en charge. Indiquez le modèle, la version exacte d’iOS et le jailbreak.";
-"Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta." = "Horloges personnalisées pour l’écran verrouillé. iOS 15 pris en charge ; bêta expérimentale pour iOS 16–17.";
+"iOS 16–18 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "La prise en charge d’iOS 16–18 est expérimentale et a été testée sur un nombre limité d’appareils. iOS 15 reste pris en charge. Indiquez le modèle, la version exacte d’iOS et le jailbreak.";
+"Custom lock screen clocks. iOS 15 supported; iOS 16–18 experimental beta." = "Horloges personnalisées pour l’écran verrouillé. iOS 15 pris en charge ; bêta expérimentale pour iOS 16–18.";
 "No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." = "Aucun rapport de diagnostic disponible. Redémarrez SpringBoard, verrouillez puis réactivez l’appareil et réessayez.";
 
 

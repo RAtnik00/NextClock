@@ -2,7 +2,7 @@
 
 <img src="Assets/nextclock-icon.png" width="128" alt="NextClock logo">
 
-Custom lock screen clocks for rootless iOS 15, with an experimental iOS 16–17 beta.
+Custom lock screen clocks for rootless iOS 15, with experimental support for iOS 16–18.
 
 ## 1.2.0 beta 9
 
@@ -20,6 +20,8 @@ Charging visibility and wallpaper-editor rendering improvements. Developer-teste
 Adds date font design, relative size and weight customization, favorite packs with opt-in double-tap switching, an animated draft preview with Apply, and a stable-release archive for rollback. Beta 2 consolidates appearance controls (including color and Low Power Mode) in Configure clock and moves maintenance tools to Advanced. Beta 3 uses native grouped editor lists, checkmark selection pages, Dynamic Type and VoiceOver labels, respects Reduce Motion, and confirms respring. New gestures and preview behavior require device testing. See [BETA-1.2.md](BETA-1.2.md).
 
 ## Compatibility
+
+Beta 10 allows installation on rootless iOS 18.x. The modern clock adapter requires compatible runtime methods and keeps the system clock when they are unavailable. iOS 18 device testing is pending.
 
 - Rootless iOS 15: previously tested devices listed below
 - iOS 16–17: experimental; limited tester reports, not universal compatibility

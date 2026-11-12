@@ -38,7 +38,7 @@ static NSString *NCText(NSString *key) {
         NSString *footer = [row propertyForKey:@"footerText"];
 #ifdef NC_LEGACY_BUILD
         if (([name isEqual:@"About"] && footer.length) ||
-            [footer isEqual:@"iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak."])
+            [footer isEqual:@"iOS 16–18 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak."])
             footer = @"Experimental rootful build for iOS 12–14. Device testing required.";
 #endif
         if (footer.length) [row setProperty:NCText(footer) forKey:@"footerText"];

@@ -1577,13 +1577,15 @@ static NSString *NCProbeLuminance(id object, SEL selector) {
             %init(NCAODTransitionProbe);
         }
 #endif
+        NSInteger majorVersion = NSProcessInfo.processInfo.operatingSystemVersion.majorVersion;
         Class modernClass = NSClassFromString(@"CSProminentDisplayView");
-        BOOL modern = UIDevice.currentDevice.systemVersion.doubleValue >= 16 && modernClass &&
+        BOOL modern = majorVersion >= 16 && [modernClass isSubclassOfClass:UIView.class] &&
+            NCMethodHasABI(modernClass, @selector(layoutSubviews), "v", @[]) &&
             NCMethodHasABI(modernClass, @selector(timeView), "@", @[]) &&
             NCMethodHasABI(modernClass, @selector(subtitleView), "@", @[]) &&
             NCMethodHasABI(modernClass, @selector(setDisplayDate:), "v", @[@"@"]);
         Class legacyClass = NSClassFromString(@"SBFLockScreenDateView");
-        BOOL legacy = legacyClass && [legacyClass isSubclassOfClass:UIView.class] &&
+        BOOL legacy = majorVersion < 18 && legacyClass && [legacyClass isSubclassOfClass:UIView.class] &&
             class_getInstanceMethod(legacyClass, @selector(layoutSubviews)) &&
             NCMethodHasABI(legacyClass, @selector(date), "@", @[]) &&
             NCMethodHasABI(legacyClass, @selector(setDate:), "v", @[@"@"]);

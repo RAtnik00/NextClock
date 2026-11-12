@@ -74,8 +74,8 @@
 "Show seconds" = "Visa sekunder";
 "BETA TESTING" = "BETATESTNING";
 "Export diagnostics" = "Exportera diagnostik";
-"iOS 16–17 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Stödet för iOS 16–17 är experimentellt och har testats på ett begränsat antal enheter. iOS 15 stöds fortfarande. Ange modell, exakt iOS-version och jailbreak.";
-"Custom lock screen clocks. iOS 15 supported; iOS 16–17 experimental beta." = "Anpassade låsskärmsklockor. iOS 15 stöds; experimentell beta för iOS 16–17.";
+"iOS 16–18 support is experimental and has limited device testing. iOS 15 remains supported. Please report your model, exact iOS version and jailbreak." = "Stödet för iOS 16–18 är experimentellt och har testats på ett begränsat antal enheter. iOS 15 stöds fortfarande. Ange modell, exakt iOS-version och jailbreak.";
+"Custom lock screen clocks. iOS 15 supported; iOS 16–18 experimental beta." = "Anpassade låsskärmsklockor. iOS 15 stöds; experimentell beta för iOS 16–18.";
 "No diagnostic report yet. Restart SpringBoard, lock and wake the device, then try again." = "Ingen diagnostikrapport ännu. Starta om SpringBoard, lås enheten, väck skärmen och försök igen.";
 
 
