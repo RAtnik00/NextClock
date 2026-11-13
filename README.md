@@ -77,7 +77,6 @@ Additional packs
 - [Heart Numbers](https://www.mediafire.com/file/j4ikkuxmtfbgwp4/HeartNumbers.zip/file)
 - [Superman Numbers](https://www.mediafire.com/file/jjqx32sr5ilwxfq/SupermanNumbers.zip/file)
 
-[All community archives on GitHub](https://github.com/RAtnik00/NextClock/releases/tag/dev-version)
 
 Unzip the original outer archive. In **Settings → NextClock → Manage packs → Import pack**, choose the ZIP for the pack you want. Import each inner ZIP separately.
 
