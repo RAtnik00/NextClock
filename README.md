@@ -21,7 +21,7 @@ Adds date font design, relative size and weight customization, favorite packs wi
 
 ## Compatibility
 
-Beta 10 allows installation on rootless iOS 18.x. The modern clock adapter requires compatible runtime methods and keeps the system clock when they are unavailable. iOS 18 device testing is pending.
+Version 1.2.0 allows installation on rootless iOS 18.x. The modern clock adapter requires compatible runtime methods and keeps the system clock when they are unavailable. A tester reported working clocks on iOS 18.7.1. Compatibility on iOS 18 remains experimental.
 
 - Rootless iOS 15: previously tested devices listed below
 - iOS 16–17: experimental; limited tester reports, not universal compatibility
@@ -57,7 +57,7 @@ Image limits: 2048 px per dimension, 240 frames, 8 MB encoded and 96 MB decoded 
 
 ### Community themes
 
-Thanks to [peto-bot](https://github.com/peto-bot) ([**@peza198** on X](https://x.com/peza198)) for creating and sharing these six NextClock packs.
+Thanks to [peto-bot](https://github.com/peto-bot) ([**@peza198** on X](https://x.com/peza198)) for creating and sharing these NextClock packs.
 
 - **Pink Panther** features an animated tail.
 - **Tom & Jerry Mix** features Tom and Jerry.
@@ -68,7 +68,18 @@ Thanks to [peto-bot](https://github.com/peto-bot) ([**@peza198** on X](https://x
 
 [Download the original community archive](https://www.mediafire.com/file/jg4cj3tav878pgr/nextclock_themes.zip/file)
 
-Unzip the outer archive. In **Settings → NextClock → Manage packs → Import pack**, choose the ZIP for the pack you want. Import each inner ZIP separately.
+Additional packs
+
+- [Earth Numbers](https://www.mediafire.com/file/3y7pyx8etkza9dt/EarthNumbers.zip/file)
+- [Spider-Man 2](https://www.mediafire.com/file/wrt6y1sg5tz5gjx/SpiderMan2.zip/file)
+- [Heart Digits v2](https://www.mediafire.com/file/hf7a6azjzc3p54s/HeartDigits_v2.zip/file)
+- [Skull Numbers](https://www.mediafire.com/file/57anb4yk8ulbhca/SkullNumbers.zip/file)
+- [Heart Numbers](https://www.mediafire.com/file/j4ikkuxmtfbgwp4/HeartNumbers.zip/file)
+- [Superman Numbers](https://www.mediafire.com/file/jjqx32sr5ilwxfq/SupermanNumbers.zip/file)
+
+[All community archives on GitHub](https://github.com/RAtnik00/NextClock/releases/tag/dev-version)
+
+Unzip the original outer archive. In **Settings → NextClock → Manage packs → Import pack**, choose the ZIP for the pack you want. Import each inner ZIP separately.
 
 ## Build
 Theos, Xcode, patched iOS 16.5 SDK. Run the checks in [Tests/README.md](Tests/README.md), then `make package FINALPACKAGE=1`. arm64 and arm64e, rootless, deployment iOS 15. The rootless package architecture remains `iphoneos-arm64`. PreferenceLoader required.

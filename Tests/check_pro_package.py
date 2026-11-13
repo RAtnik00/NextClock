@@ -26,7 +26,7 @@ if not pro:
     assert "firmware (>= 15.0), firmware (<< 19.0)" in text
 base='var/jb/Library/PreferenceBundles/NextClockPrefs.bundle/'
 info=plistlib.loads(files[base+'Info.plist'])
-assert info['NextClockVersion']==('0.1.0~alpha1' if pro else '1.2.0~beta10')
+assert info['NextClockVersion']==('0.1.0~alpha1' if pro else '1.2.0')
 loader=plistlib.loads(files['var/jb/Library/PreferenceLoader/Preferences/NextClockPrefs.plist'])
 assert loader['entry']['label']==('NextClock Pro' if pro else 'NextClock')
 root=plistlib.loads(files[base+'Root.plist'])['items']
