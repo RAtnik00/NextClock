@@ -4,6 +4,19 @@
 
 Custom lock screen clocks for rootless iOS 15, with experimental support for iOS 16–18.
 
+## NextClock 1.2.0
+
+[Download the stable release](https://github.com/RAtnik00/NextClock/releases/tag/v1.2.0) or update from the [Sileo and Zebra repository](https://ratnik00.github.io/repo/).
+
+- Preview animated clock packs before applying changes.
+- Double-tap the clock to switch between favorite packs when enabled.
+- Customize the Lock Screen date font, size, and weight.
+- Assign a separate clock pack to each Lock Screen wallpaper.
+- Try experimental Always-On Display rendering with minute-by-minute updates on supported devices.
+- Export diagnostics, restart SpringBoard, or reset settings from the main NextClock settings page.
+
+The package includes arm64 and arm64e. Rootless iOS 15 is supported. Support for iOS 16–18 remains experimental, with a tester report of working clocks on iOS 18.7.1.
+
 ## 1.2.0 beta 9
 
 Adds experimental Always-On Display clock rendering, tested on iPhone 14 Pro with iOS 16.2. The main settings page now includes diagnostic export, SpringBoard restart, and reset.
