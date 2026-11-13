@@ -2,7 +2,7 @@
 
 <img src="Assets/nextclock-icon.png" width="128" alt="NextClock logo">
 
-Custom lock screen clocks for rootless iOS 15, with experimental support for iOS 16–18.
+Custom Lock Screen clocks for rootless iOS 15–18. Compatibility on iOS 16–18 is experimental.
 
 ## NextClock 1.2.0
 
@@ -15,7 +15,7 @@ Custom lock screen clocks for rootless iOS 15, with experimental support for iOS
 - Try experimental Always-On Display rendering with minute-by-minute updates on supported devices.
 - Export diagnostics, restart SpringBoard, or reset settings from the main NextClock settings page.
 
-The package includes arm64 and arm64e. Rootless iOS 15 is supported. Support for iOS 16–18 remains experimental, with a tester report of working clocks on iOS 18.7.1.
+**Supported iOS versions: 15–18 (rootless).** Compatibility on iOS 16–18 is experimental, with a tester report of working clocks on iOS 18.7.1. The package includes arm64 and arm64e.
 
 ## 1.2.0 beta 9
 
@@ -37,7 +37,7 @@ Adds date font design, relative size and weight customization, favorite packs wi
 Version 1.2.0 allows installation on rootless iOS 18.x. The modern clock adapter requires compatible runtime methods and keeps the system clock when they are unavailable. A tester reported working clocks on iOS 18.7.1. Compatibility on iOS 18 remains experimental.
 
 - Rootless iOS 15: previously tested devices listed below
-- iOS 16–17: experimental; limited tester reports, not universal compatibility
+- iOS 16–18: experimental, with limited device testing
 - Includes arm64 and arm64e binaries for both the tweak and preferences bundle
 - Requires PreferenceLoader
 
